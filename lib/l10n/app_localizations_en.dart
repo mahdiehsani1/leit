@@ -249,7 +249,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get sectionGeneral => 'General';
 
   @override
-  String get sectionDataSync => 'Data & Sync';
+  String get sectionDataSync => 'Cloud & Sync';
 
   @override
   String get sectionAbout => 'About';
@@ -264,10 +264,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get dailyReminderTitle => 'Daily Reminder';
 
   @override
-  String get backupToFile => 'Backup to File';
+  String get backupToCloud => 'Backup to Cloud';
 
   @override
-  String get restoreFromFile => 'Restore from File';
+  String get restoreFromCloud => 'Restore from Cloud';
 
   @override
   String get clearAllData => 'Clear All Data';
@@ -294,18 +294,21 @@ class AppLocalizationsEn extends AppLocalizations {
   String get selectLanguageDialog => 'Select Language';
 
   @override
-  String get restoreDialogTitle => 'Restore Backup';
+  String get restoreDialogTitle => 'Restore from Cloud';
 
   @override
   String get restoreDialogMsg =>
-      'Current data will be replaced with the selected file.\nThis action cannot be undone.\nAre you sure?';
+      'This will merge your cloud data with current device data.';
 
   @override
   String get clearDialogTitle => 'Clear All Data?';
 
   @override
   String get clearDialogMsg =>
-      'Warning: This will permanently delete ALL your words, progress, and statistics.\nThis action cannot be undone!';
+      'Warning: This will permanently delete ALL your words, progress, and statistics.';
+
+  @override
+  String get clearDialogOptionCloud => 'Also delete Cloud Backup';
 
   @override
   String get btnCancel => 'Cancel';
@@ -317,11 +320,23 @@ class AppLocalizationsEn extends AppLocalizations {
   String get btnDeleteEverything => 'Delete Everything';
 
   @override
-  String get msgDataRestored =>
-      'Data restored successfully! Please restart app.';
+  String get msgDataRestored => 'Data restored from Cloud successfully!';
 
   @override
-  String get msgBackupFailed => 'Backup failed';
+  String get msgBackupSuccess => 'Backup uploaded to Cloud successfully!';
+
+  @override
+  String msgBackupFailed(Object error) {
+    return 'Cloud Backup Failed: $error';
+  }
+
+  @override
+  String msgRestoreFailed(Object error) {
+    return 'Restore Failed: $error';
+  }
+
+  @override
+  String get msgSignInRequired => 'Please sign in to use this feature.';
 
   @override
   String get msgDataDeleted => 'All data has been deleted successfully.';
@@ -334,7 +349,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String msgLanguageChanged(Object lang) {
-    return 'Language changed to $lang. Restart app to apply fully if needed.';
+    return 'Language changed to $lang.';
   }
 
   @override

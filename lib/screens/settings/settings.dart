@@ -73,6 +73,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   void _showLanguageBottomSheet(String fontFamily) {
+    final l10n = AppLocalizations.of(context)!;
     showModalBottomSheet(
       context: context,
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
@@ -86,7 +87,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             mainAxisSize: MainAxisSize.min,
             children: [
               Text(
-                "Select Language",
+                l10n.selectLanguageDialog,
                 style: Theme.of(context).textTheme.titleLarge?.copyWith(
                   fontWeight: FontWeight.bold,
                   fontFamily: fontFamily,
@@ -179,7 +180,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
         return Theme(
           data: theme.copyWith(
             timePickerTheme: TimePickerThemeData(
-              // ... (Same styling as before) ...
               backgroundColor: theme.scaffoldBackgroundColor,
               dialHandColor: theme.colorScheme.primary,
               dialTextColor: MaterialStateColor.resolveWith(
@@ -285,11 +285,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Future<void> _handleBackup(AppLocalizations l10n, String fontFamily) async {
     // بررسی لاگین بودن کاربر
     if (FirebaseAuth.instance.currentUser == null) {
-      _showSnack(
-        "Please sign in to use Cloud Backup",
-        fontFamily,
-        isError: true,
-      );
+      _showSnack(l10n.msgSignInRequired, fontFamily, isError: true);
       return;
     }
 
@@ -300,17 +296,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
       if (!mounted) return;
       Navigator.pop(context); // بستن لودینگ
-      _showSnack("Backup uploaded to Cloud successfully!", fontFamily);
+      _showSnack(l10n.msgBackupSuccess, fontFamily);
     } catch (e) {
       if (!mounted) return;
       Navigator.pop(context);
-      _showSnack("Cloud Backup Failed: $e", fontFamily, isError: true);
+      _showSnack(l10n.msgBackupFailed(e.toString()), fontFamily, isError: true);
     }
   }
 
   Future<void> _handleRestore(AppLocalizations l10n, String fontFamily) async {
     if (FirebaseAuth.instance.currentUser == null) {
-      _showSnack("Please sign in to Restore data", fontFamily, isError: true);
+      _showSnack(l10n.msgSignInRequired, fontFamily, isError: true);
       return;
     }
 
@@ -330,7 +326,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ),
             ),
             content: Text(
-              "This will merge your cloud data with current device data.",
+              l10n.restoreDialogMsg,
               style: TextStyle(height: 1.4, fontFamily: fontFamily),
             ),
             actions: [
@@ -371,11 +367,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
       if (!mounted) return;
       Navigator.pop(context);
-      _showSnack("Data restored from Cloud successfully!", fontFamily);
+      _showSnack(l10n.msgDataRestored, fontFamily);
     } catch (e) {
       if (!mounted) return;
       Navigator.pop(context);
-      _showSnack("Restore Failed: $e", fontFamily, isError: true);
+      _showSnack(
+        l10n.msgRestoreFailed(e.toString()),
+        fontFamily,
+        isError: true,
+      );
     }
   }
 
@@ -383,62 +383,110 @@ class _SettingsScreenState extends State<SettingsScreen> {
     AppLocalizations l10n,
     String fontFamily,
   ) async {
+    // Variable for checkbox state inside dialog
+    bool deleteCloud = false;
+    final user = FirebaseAuth.instance.currentUser;
+    final canDeleteCloud = user != null;
+
     bool confirm =
         await showDialog(
           context: context,
-          builder: (ctx) => AlertDialog(
-            backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(20),
-            ),
-            title: Text(
-              l10n.clearDialogTitle,
-              style: TextStyle(
-                fontWeight: FontWeight.bold,
-                fontFamily: fontFamily,
-              ),
-            ),
-            content: Text(
-              l10n.clearDialogMsg,
-              style: TextStyle(height: 1.4, fontFamily: fontFamily),
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(ctx, false),
-                child: Text(
-                  l10n.btnCancel,
-                  style: TextStyle(
-                    color: Theme.of(
-                      context,
-                    ).colorScheme.onBackground.withOpacity(0.6),
-                    fontFamily: fontFamily,
+          builder: (ctx) {
+            return StatefulBuilder(
+              builder: (context, setState) {
+                return AlertDialog(
+                  backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(20),
                   ),
-                ),
-              ),
-              TextButton(
-                onPressed: () => Navigator.pop(ctx, true),
-                child: Text(
-                  l10n.btnDeleteEverything,
-                  style: TextStyle(
-                    color: Colors.redAccent,
-                    fontWeight: FontWeight.bold,
-                    fontFamily: fontFamily,
+                  title: Text(
+                    l10n.clearDialogTitle,
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontFamily: fontFamily,
+                    ),
                   ),
-                ),
-              ),
-            ],
-          ),
+                  content: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        l10n.clearDialogMsg,
+                        style: TextStyle(height: 1.4, fontFamily: fontFamily),
+                      ),
+                      if (canDeleteCloud) ...[
+                        const SizedBox(height: 16),
+                        CheckboxListTile(
+                          value: deleteCloud,
+                          onChanged: (val) {
+                            setState(() => deleteCloud = val ?? false);
+                          },
+                          title: Text(
+                            l10n.clearDialogOptionCloud,
+                            style: TextStyle(
+                              fontFamily: fontFamily,
+                              fontSize: 14,
+                            ),
+                          ),
+                          contentPadding: EdgeInsets.zero,
+                          controlAffinity: ListTileControlAffinity.leading,
+                          activeColor: Colors.redAccent,
+                        ),
+                      ],
+                    ],
+                  ),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(ctx, false),
+                      child: Text(
+                        l10n.btnCancel,
+                        style: TextStyle(
+                          color: Theme.of(
+                            context,
+                          ).colorScheme.onBackground.withOpacity(0.6),
+                          fontFamily: fontFamily,
+                        ),
+                      ),
+                    ),
+                    TextButton(
+                      onPressed: () => Navigator.pop(ctx, true),
+                      child: Text(
+                        l10n.btnDeleteEverything,
+                        style: TextStyle(
+                          color: Colors.redAccent,
+                          fontWeight: FontWeight.bold,
+                          fontFamily: fontFamily,
+                        ),
+                      ),
+                    ),
+                  ],
+                );
+              },
+            );
+          },
         ) ??
         false;
 
     if (!confirm) return;
 
     _showLoadingDialog();
-    await DBHelper.instance.clearAllData();
+    try {
+      // 1. Delete Local Data
+      await DBHelper.instance.clearAllData();
 
-    if (!mounted) return;
-    Navigator.pop(context);
-    _showSnack(l10n.msgDataDeleted, fontFamily, isError: true);
+      // 2. Delete Cloud Data (if selected)
+      if (deleteCloud && canDeleteCloud) {
+        await CloudBackupService().deleteBackup();
+      }
+
+      if (!mounted) return;
+      Navigator.pop(context);
+      _showSnack(l10n.msgDataDeleted, fontFamily, isError: true);
+    } catch (e) {
+      if (!mounted) return;
+      Navigator.pop(context);
+      _showSnack("Error: $e", fontFamily, isError: true);
+    }
   }
 
   // --- Extra Methods ---
@@ -663,16 +711,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      _sectionTitle(
-                        context,
-                        "Cloud & Sync",
-                        fontFamily,
-                      ), // تغییر نام سکشن
+                      _sectionTitle(context, l10n.sectionDataSync, fontFamily),
                       _settingsGroup(context, [
                         _actionItem(
                           context,
                           icon: HugeIcons.strokeRoundedCloudUpload,
-                          title: "Backup to Cloud", // متن جدید
+                          title: l10n.backupToCloud,
                           fontFamily: fontFamily,
                           onTap: () => _handleBackup(l10n, fontFamily),
                         ),
@@ -680,7 +724,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         _actionItem(
                           context,
                           icon: HugeIcons.strokeRoundedCloudDownload,
-                          title: "Restore from Cloud", // متن جدید
+                          title: l10n.restoreFromCloud,
                           fontFamily: fontFamily,
                           onTap: () => _handleRestore(l10n, fontFamily),
                         ),

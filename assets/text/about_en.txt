@@ -1,25 +1,30 @@
 About Leit
 Version 1.0.0
 
-Leit is your intelligent, privacy-first companion for mastering the German language. Created with care and precision by Mahdi Ehsani, the app helps you build and retain vocabulary through proven scientific methods.
+Leit is your intelligent, privacy-first companion for mastering the German language.
+Created with care and precision by Mahdi Ehsani, the app helps you build and retain vocabulary through proven scientific methods.
 
 Key Features & How It Works
 
 1. The Leitner System (Spaced Repetition Done Right)
-At the heart of Leit is the classic Leitner box method enhanced with spaced repetition. Instead of reviewing words randomly, the app schedules your practice sessions based on performance. Each card moves through 6 levels—correct answers move it forward, mistakes send it back—ensuring true long-term learning.
+At the heart of Leit is the classic Leitner box method enhanced with spaced repetition.
+Instead of reviewing words randomly, the app schedules your practice sessions based on performance.
+Each card moves through 6 levels—correct answers move it forward, mistakes send it back—ensuring true long-term learning.
 
 2. Advanced Vocabulary Management
 Each entry can hold everything you need for complete understanding: the German word, English and Persian translations, article (der/die/das), plural form, verb conjugations, example sentences, synonyms, and your personal grammar notes.
 
-3. Full Offline Privacy & Manual Backup
-Your learning data stays on your device—fully offline.
+3. Secure Cloud Backup & Sync
+Never lose your progress.
+Sign in securely with your Google account to enable Cloud Backup.
+You can back up your database to your private cloud storage and restore it on any device.
+Your data remains private: backups are stored in a secure, user-specific directory that only you can access.
 
-Backup: Export your entire database as a file and store it wherever you trust.
-
-Restore: Switching devices? Import your backup and instantly recover all your progress.
-
-4. Optional Account & Minimal Analytics
-You can use Leit completely anonymously. Signing in with Google is optional and only helps us measure active users and collect essential crash reports for stability improvements. Vocabulary data is never synced to the cloud; it remains entirely on your device.
+4. Privacy & Data Control
+You are in full control.
+- Offline First: The app works perfectly without internet.
+- Minimal Analytics: We only collect anonymous crash reports to improve stability.
+- Data Ownership: You can delete your local data or your cloud backups at any time from the Settings menu.
 
 5. Visual Progress Insights
 Stay motivated with a clear Statistics dashboard that shows your daily activity, answer accuracy, and how your learning cards are distributed across all levels.

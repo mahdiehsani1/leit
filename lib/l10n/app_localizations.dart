@@ -557,7 +557,7 @@ abstract class AppLocalizations {
   /// No description provided for @sectionDataSync.
   ///
   /// In en, this message translates to:
-  /// **'Data & Sync'**
+  /// **'Cloud & Sync'**
   String get sectionDataSync;
 
   /// No description provided for @sectionAbout.
@@ -584,17 +584,17 @@ abstract class AppLocalizations {
   /// **'Daily Reminder'**
   String get dailyReminderTitle;
 
-  /// No description provided for @backupToFile.
+  /// No description provided for @backupToCloud.
   ///
   /// In en, this message translates to:
-  /// **'Backup to File'**
-  String get backupToFile;
+  /// **'Backup to Cloud'**
+  String get backupToCloud;
 
-  /// No description provided for @restoreFromFile.
+  /// No description provided for @restoreFromCloud.
   ///
   /// In en, this message translates to:
-  /// **'Restore from File'**
-  String get restoreFromFile;
+  /// **'Restore from Cloud'**
+  String get restoreFromCloud;
 
   /// No description provided for @clearAllData.
   ///
@@ -647,13 +647,13 @@ abstract class AppLocalizations {
   /// No description provided for @restoreDialogTitle.
   ///
   /// In en, this message translates to:
-  /// **'Restore Backup'**
+  /// **'Restore from Cloud'**
   String get restoreDialogTitle;
 
   /// No description provided for @restoreDialogMsg.
   ///
   /// In en, this message translates to:
-  /// **'Current data will be replaced with the selected file.\nThis action cannot be undone.\nAre you sure?'**
+  /// **'This will merge your cloud data with current device data.'**
   String get restoreDialogMsg;
 
   /// No description provided for @clearDialogTitle.
@@ -665,8 +665,14 @@ abstract class AppLocalizations {
   /// No description provided for @clearDialogMsg.
   ///
   /// In en, this message translates to:
-  /// **'Warning: This will permanently delete ALL your words, progress, and statistics.\nThis action cannot be undone!'**
+  /// **'Warning: This will permanently delete ALL your words, progress, and statistics.'**
   String get clearDialogMsg;
+
+  /// No description provided for @clearDialogOptionCloud.
+  ///
+  /// In en, this message translates to:
+  /// **'Also delete Cloud Backup'**
+  String get clearDialogOptionCloud;
 
   /// No description provided for @btnCancel.
   ///
@@ -689,14 +695,32 @@ abstract class AppLocalizations {
   /// No description provided for @msgDataRestored.
   ///
   /// In en, this message translates to:
-  /// **'Data restored successfully! Please restart app.'**
+  /// **'Data restored from Cloud successfully!'**
   String get msgDataRestored;
+
+  /// No description provided for @msgBackupSuccess.
+  ///
+  /// In en, this message translates to:
+  /// **'Backup uploaded to Cloud successfully!'**
+  String get msgBackupSuccess;
 
   /// No description provided for @msgBackupFailed.
   ///
   /// In en, this message translates to:
-  /// **'Backup failed'**
-  String get msgBackupFailed;
+  /// **'Cloud Backup Failed: {error}'**
+  String msgBackupFailed(Object error);
+
+  /// No description provided for @msgRestoreFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Restore Failed: {error}'**
+  String msgRestoreFailed(Object error);
+
+  /// No description provided for @msgSignInRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Please sign in to use this feature.'**
+  String get msgSignInRequired;
 
   /// No description provided for @msgDataDeleted.
   ///
@@ -719,7 +743,7 @@ abstract class AppLocalizations {
   /// No description provided for @msgLanguageChanged.
   ///
   /// In en, this message translates to:
-  /// **'Language changed to {lang}. Restart app to apply fully if needed.'**
+  /// **'Language changed to {lang}.'**
   String msgLanguageChanged(Object lang);
 
   /// No description provided for @introSkip.
