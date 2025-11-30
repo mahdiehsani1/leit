@@ -1,0 +1,1019 @@
+// ignore_for_file: use_build_context_synchronously, deprecated_member_use, curly_braces_in_flow_control_structures
+
+import 'package:animate_do/animate_do.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/material.dart';
+import 'package:hugeicons/hugeicons.dart';
+import 'package:leit/data/database/db_helper.dart';
+import 'package:leit/data/service/backup_service.dart';
+import 'package:leit/data/service/notification_service.dart';
+import 'package:leit/data/service/auth_service.dart';
+import 'package:leit/l10n/app_localizations.dart';
+import 'package:leit/theme/theme_controller.dart';
+import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
+class SettingsScreen extends StatefulWidget {
+  const SettingsScreen({super.key});
+
+  @override
+  State<SettingsScreen> createState() => _SettingsScreenState();
+}
+
+class _SettingsScreenState extends State<SettingsScreen> {
+  final AuthService _authService = AuthService();
+
+  // متغیرهای مربوط به نوتیفیکیشن
+  bool _isReminderEnabled = false;
+  int _reminderHour = 10; // ساعت پیش‌فرض
+  int _reminderMinute = 0; // دقیقه پیش‌فرض
+
+  String _currentLanguageCode = 'en';
+
+  @override
+  void initState() {
+    super.initState();
+    _loadSettings();
+    _authService.init();
+  }
+
+  Future<void> _loadSettings() async {
+    final pref = await SharedPreferences.getInstance();
+    if (mounted) {
+      setState(() {
+        _isReminderEnabled = pref.getBool("notif_enabled") ?? false;
+        _reminderHour = pref.getInt("notif_hour") ?? 10;
+        _reminderMinute = pref.getInt("notif_minute") ?? 0;
+        _currentLanguageCode = pref.getString('language_code') ?? 'en';
+      });
+    }
+  }
+
+  // --- Language Methods ---
+
+  String _getLanguageName(String code, AppLocalizations l10n) {
+    switch (code) {
+      case 'de':
+        return "Deutsch";
+      case 'en':
+      default:
+        return "English";
+    }
+  }
+
+  Future<void> _changeLanguage(String code) async {
+    final pref = await SharedPreferences.getInstance();
+    await pref.setString('language_code', code);
+
+    setState(() {
+      _currentLanguageCode = code;
+    });
+
+    if (!mounted) return;
+
+    const fontFamily = 'Poppins';
+    final l10n = AppLocalizations.of(context)!;
+
+    Navigator.pop(context);
+
+    _showSnack(
+      l10n.msgLanguageChanged(_getLanguageName(code, l10n)),
+      fontFamily,
+    );
+  }
+
+  void _showLanguageBottomSheet(AppLocalizations l10n, String fontFamily) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (ctx) {
+        return Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                "Select Language",
+                style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                  fontWeight: FontWeight.bold,
+                  fontFamily: fontFamily,
+                ),
+              ),
+              const SizedBox(height: 20),
+              _languageTile(
+                title: "English",
+                subtitle: "Default",
+                code: "en",
+                icon: HugeIcons.strokeRoundedLanguageCircle,
+                fontFamily: fontFamily,
+              ),
+              _languageTile(
+                title: "Deutsch",
+                subtitle: "German",
+                code: "de",
+                icon: HugeIcons.strokeRoundedLanguageCircle,
+                fontFamily: fontFamily,
+              ),
+              const SizedBox(height: 10),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _languageTile({
+    required String title,
+    required String subtitle,
+    required String code,
+    required List<List<dynamic>> icon,
+    required String fontFamily,
+  }) {
+    final isSelected = _currentLanguageCode == code;
+    final theme = Theme.of(context);
+
+    return ListTile(
+      leading: Container(
+        padding: const EdgeInsets.all(10),
+        decoration: BoxDecoration(
+          color: isSelected
+              ? theme.colorScheme.primary.withOpacity(0.1)
+              : theme.colorScheme.onBackground.withOpacity(0.05),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: HugeIcon(
+          icon: icon,
+          color: isSelected
+              ? theme.colorScheme.primary
+              : theme.colorScheme.onBackground,
+          size: 24,
+        ),
+      ),
+      title: Text(
+        title,
+        style: TextStyle(
+          fontWeight: FontWeight.bold,
+          color: isSelected
+              ? theme.colorScheme.primary
+              : theme.colorScheme.onBackground,
+          fontFamily: fontFamily,
+        ),
+      ),
+      subtitle: Text(subtitle, style: TextStyle(fontFamily: fontFamily)),
+      trailing: isSelected
+          ? Icon(Icons.check_circle_rounded, color: theme.colorScheme.primary)
+          : null,
+      onTap: () => _changeLanguage(code),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+    );
+  }
+
+  // --- Notification Methods ---
+
+  /// تابع کمکی برای فرمت نمایش ساعت (مثلا 10:05 AM)
+  String _formatTimeOfDay(TimeOfDay time) {
+    final localizations = MaterialLocalizations.of(context);
+    return localizations.formatTimeOfDay(time, alwaysUse24HourFormat: false);
+  }
+
+  /// باز کردن دیالوگ انتخاب ساعت
+  Future<void> _pickReminderTime(
+    AppLocalizations l10n,
+    String fontFamily,
+  ) async {
+    final TimeOfDay? picked = await showTimePicker(
+      context: context,
+      initialTime: TimeOfDay(hour: _reminderHour, minute: _reminderMinute),
+      builder: (context, child) {
+        final theme = Theme.of(context);
+        final colorScheme = theme.colorScheme;
+
+        // تعریف رنگ‌های پایه برای خوانایی بهتر
+        final activeColor = colorScheme.primary;
+        final inactiveColor = colorScheme.onBackground.withOpacity(0.6);
+        final activeBackground = colorScheme.primary.withOpacity(0.15);
+        final inactiveBackground = colorScheme.onBackground.withOpacity(0.05);
+
+        return Theme(
+          data: theme.copyWith(
+            timePickerTheme: TimePickerThemeData(
+              backgroundColor: theme.scaffoldBackgroundColor,
+
+              // --- تنظیمات دایره ساعت (Dial) ---
+              dialBackgroundColor: inactiveBackground,
+              dialHandColor: activeColor,
+              dialTextColor: MaterialStateColor.resolveWith((states) {
+                // اعداد روی ساعت: اگر انتخاب شده باشد سفید (یا رنگ روی پرایمری)، در غیر این صورت رنگ متن عادی
+                return states.contains(MaterialState.selected)
+                    ? colorScheme.onPrimary
+                    : colorScheme.onBackground;
+              }),
+
+              // --- تنظیمات باکس‌های نمایش ساعت و دقیقه (Header) ---
+              hourMinuteShape: const RoundedRectangleBorder(
+                borderRadius: BorderRadius.all(Radius.circular(12)),
+              ),
+              hourMinuteColor: MaterialStateColor.resolveWith((states) {
+                // پس‌زمینه باکس اعداد: اگر فعال باشد رنگ ملایم پرایمری، وگرنه خاکستری کمرنگ
+                return states.contains(MaterialState.selected)
+                    ? activeBackground
+                    : inactiveBackground;
+              }),
+              hourMinuteTextColor: MaterialStateColor.resolveWith((states) {
+                // متن اعداد: اگر فعال باشد رنگ پرایمری، وگرنه رنگ متن عادی
+                return states.contains(MaterialState.selected)
+                    ? activeColor
+                    : colorScheme.onBackground;
+              }),
+
+              // --- تنظیمات AM/PM ---
+              dayPeriodShape: const RoundedRectangleBorder(
+                borderRadius: BorderRadius.all(Radius.circular(8)),
+              ),
+              dayPeriodColor: MaterialStateColor.resolveWith((states) {
+                return states.contains(MaterialState.selected)
+                    ? activeBackground
+                    : Colors.transparent;
+              }),
+              dayPeriodTextColor: MaterialStateColor.resolveWith((states) {
+                return states.contains(MaterialState.selected)
+                    ? activeColor
+                    : inactiveColor;
+              }),
+              dayPeriodBorderSide: BorderSide(
+                color: colorScheme.onBackground.withOpacity(0.2),
+              ),
+
+              // --- سایر تنظیمات ---
+              entryModeIconColor: activeColor, // آیکون کیبورد/ساعت
+              helpTextStyle: TextStyle(
+                fontFamily: fontFamily,
+                fontWeight: FontWeight.bold,
+                color: colorScheme.onBackground,
+              ),
+            ),
+
+            // --- دکمه‌های OK و Cancel ---
+            textButtonTheme: TextButtonThemeData(
+              style: TextButton.styleFrom(
+                foregroundColor: activeColor,
+                textStyle: TextStyle(
+                  fontFamily: fontFamily,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+          ),
+          child: MediaQuery(
+            // اطمینان از اینکه تایم پیکر همیشه در حالت ۲۴ ساعته نباشد (اختیاری)
+            data: MediaQuery.of(context).copyWith(alwaysUse24HourFormat: false),
+            child: child!,
+          ),
+        );
+      },
+    );
+
+    if (picked != null) {
+      final pref = await SharedPreferences.getInstance();
+      setState(() {
+        _reminderHour = picked.hour;
+        _reminderMinute = picked.minute;
+      });
+
+      // ذخیره زمان جدید
+      await pref.setInt("notif_hour", picked.hour);
+      await pref.setInt("notif_minute", picked.minute);
+
+      // به‌روزرسانی ناتیفیکیشن اگر فعال باشد
+      if (_isReminderEnabled) {
+        await NotificationService().cancelAll();
+        _scheduleNotification(l10n, fontFamily);
+      }
+    }
+  }
+
+  /// فعال/غیرفعال کردن کلی نوتیفیکیشن
+  Future<void> _toggleNotification(
+    bool value,
+    AppLocalizations l10n,
+    String fontFamily,
+  ) async {
+    final pref = await SharedPreferences.getInstance();
+
+    if (value) {
+      // تلاش برای فعال‌سازی
+      bool granted = await NotificationService().requestPermissions();
+      if (granted) {
+        _scheduleNotification(l10n, fontFamily);
+        setState(() => _isReminderEnabled = true);
+        await pref.setBool("notif_enabled", true);
+      } else {
+        setState(() => _isReminderEnabled = false);
+        await pref.setBool("notif_enabled", false);
+        if (mounted)
+          _showSnack(l10n.msgPermissionDenied, fontFamily, isError: true);
+      }
+    } else {
+      // غیرفعال کردن
+      await NotificationService().cancelAll();
+      setState(() => _isReminderEnabled = false);
+      await pref.setBool("notif_enabled", false);
+    }
+  }
+
+  /// متد اختصاصی برای زمان‌بندی (جدا شده برای تمیزی کد)
+  Future<void> _scheduleNotification(
+    AppLocalizations l10n,
+    String fontFamily,
+  ) async {
+    try {
+      await NotificationService().scheduleDailyNotification(
+        id: 0,
+        title: l10n.dailyReminderTitle,
+        body: l10n.continueLearning,
+        hour: _reminderHour,
+        minute: _reminderMinute,
+      );
+      if (mounted) {
+        final timeStr = _formatTimeOfDay(
+          TimeOfDay(hour: _reminderHour, minute: _reminderMinute),
+        );
+        _showSnack(
+          "${l10n.msgReminderSet.replaceAll("10:00 AM", "")} $timeStr",
+          fontFamily,
+        );
+      }
+    } catch (e) {
+      setState(() => _isReminderEnabled = false);
+      if (mounted) _showSnack("Error: $e", fontFamily, isError: true);
+    }
+  }
+
+  // --- Data Methods ---
+
+  Future<void> _handleBackup(AppLocalizations l10n, String fontFamily) async {
+    _showLoadingDialog();
+    await Future.delayed(const Duration(milliseconds: 500));
+    bool success = await BackupService.exportDatabase();
+
+    if (!mounted) return;
+    Navigator.pop(context);
+
+    if (!success) {
+      _showSnack(l10n.msgBackupFailed, fontFamily, isError: true);
+    } else {
+      _showSnack("Backup saved successfully!", fontFamily);
+    }
+  }
+
+  Future<void> _handleRestore(AppLocalizations l10n, String fontFamily) async {
+    bool confirm =
+        await showDialog(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(20),
+            ),
+            title: Text(
+              l10n.restoreDialogTitle,
+              style: TextStyle(fontFamily: fontFamily),
+            ),
+            content: Text(
+              l10n.restoreDialogMsg,
+              style: TextStyle(fontFamily: fontFamily),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx, false),
+                child: Text(
+                  l10n.btnCancel,
+                  style: TextStyle(
+                    color: Theme.of(
+                      context,
+                    ).colorScheme.onBackground.withOpacity(0.6),
+                    fontFamily: fontFamily,
+                  ),
+                ),
+              ),
+              TextButton(
+                onPressed: () => Navigator.pop(ctx, true),
+                child: Text(
+                  l10n.btnRestore,
+                  style: TextStyle(
+                    color: Colors.redAccent,
+                    fontFamily: fontFamily,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ) ??
+        false;
+
+    if (!confirm) return;
+
+    _showLoadingDialog();
+    bool success = await BackupService.importDatabase();
+
+    if (!mounted) return;
+    Navigator.pop(context);
+
+    if (success) {
+      _showSnack(l10n.msgDataRestored, fontFamily);
+    } else {
+      _showSnack(l10n.msgBackupFailed, fontFamily, isError: true);
+    }
+  }
+
+  void _showLoadingDialog() {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => Center(
+        child: Container(
+          padding: const EdgeInsets.all(24),
+          decoration: BoxDecoration(
+            color: Theme.of(context).scaffoldBackgroundColor,
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: CircularProgressIndicator(
+            color: Theme.of(context).colorScheme.onBackground,
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _showSnack(String message, String fontFamily, {bool isError = false}) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message, style: TextStyle(fontFamily: fontFamily)),
+        backgroundColor: isError
+            ? Colors.redAccent.shade200
+            : Theme.of(context).colorScheme.onBackground,
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+  }
+
+  Future<void> _handleClearData(
+    AppLocalizations l10n,
+    String fontFamily,
+  ) async {
+    bool confirm =
+        await showDialog(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(20),
+            ),
+            title: Text(
+              l10n.clearDialogTitle,
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                fontFamily: fontFamily,
+              ),
+            ),
+            content: Text(
+              l10n.clearDialogMsg,
+              style: TextStyle(height: 1.4, fontFamily: fontFamily),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx, false),
+                child: Text(
+                  l10n.btnCancel,
+                  style: TextStyle(
+                    color: Theme.of(
+                      context,
+                    ).colorScheme.onBackground.withOpacity(0.6),
+                    fontFamily: fontFamily,
+                  ),
+                ),
+              ),
+              TextButton(
+                onPressed: () => Navigator.pop(ctx, true),
+                child: Text(
+                  l10n.btnDeleteEverything,
+                  style: TextStyle(
+                    color: Colors.redAccent,
+                    fontWeight: FontWeight.bold,
+                    fontFamily: fontFamily,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ) ??
+        false;
+
+    if (!confirm) return;
+
+    _showLoadingDialog();
+    await DBHelper.instance.clearAllData();
+
+    if (!mounted) return;
+    Navigator.pop(context);
+
+    _showSnack(l10n.msgDataDeleted, fontFamily, isError: true);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final themeController = Provider.of<ThemeController>(context);
+    final isDarkMode = themeController.themeMode == ThemeMode.dark;
+
+    final l10n = AppLocalizations.of(context)!;
+    const fontFamily = 'Poppins';
+
+    return Scaffold(
+      backgroundColor: theme.scaffoldBackgroundColor,
+      body: SafeArea(
+        child: StreamBuilder<User?>(
+          stream: _authService.authStateChanges,
+          builder: (context, snapshot) {
+            final user = snapshot.data;
+
+            return ListView(
+              padding: const EdgeInsets.fromLTRB(22, 26, 22, 16),
+              physics: const BouncingScrollPhysics(),
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      l10n.tabSettings,
+                      style: theme.textTheme.headlineMedium?.copyWith(
+                        fontWeight: FontWeight.w800,
+                        color: theme.colorScheme.onBackground,
+                        fontFamily: fontFamily,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 30),
+                FadeInDown(
+                  duration: const Duration(milliseconds: 500),
+                  child: user != null
+                      ? _buildUserProfileCard(theme, user, fontFamily)
+                      : _buildSignInCard(theme, l10n, fontFamily),
+                ),
+                const SizedBox(height: 30),
+
+                // --- General Section ---
+                FadeInUp(
+                  delay: const Duration(milliseconds: 200),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _sectionTitle(context, l10n.sectionGeneral, fontFamily),
+                      _settingsGroup(context, [
+                        // Language
+                        _actionItem(
+                          context,
+                          icon: HugeIcons.strokeRoundedGlobe02,
+                          title: l10n.langTitle,
+                          trailing: _getLanguageName(
+                            _currentLanguageCode,
+                            l10n,
+                          ),
+                          fontFamily: fontFamily,
+                          onTap: () =>
+                              _showLanguageBottomSheet(l10n, fontFamily),
+                        ),
+                        _divider(theme),
+                        _switchItem(
+                          context,
+                          icon: isDarkMode
+                              ? HugeIcons.strokeRoundedMoon02
+                              : HugeIcons.strokeRoundedSun02,
+                          title: l10n.darkModeTitle,
+                          value: isDarkMode,
+                          fontFamily: fontFamily,
+                          onChanged: (val) =>
+                              themeController.setTheme(val ? "dark" : "light"),
+                        ),
+                        _divider(theme),
+                        // Reminder Switch + Time Picker
+                        _switchItem(
+                          context,
+                          icon: HugeIcons.strokeRoundedNotification01,
+                          title: l10n.dailyReminderTitle,
+                          // نمایش زمان انتخاب شده به صورت فرمت‌بندی شده
+                          subtitle: _formatTimeOfDay(
+                            TimeOfDay(
+                              hour: _reminderHour,
+                              minute: _reminderMinute,
+                            ),
+                          ),
+                          value: _isReminderEnabled,
+                          fontFamily: fontFamily,
+                          onChanged: (val) =>
+                              _toggleNotification(val, l10n, fontFamily),
+                          // با کلیک روی آیتم، پیکر باز می‌شود
+                          onTap: () => _pickReminderTime(l10n, fontFamily),
+                        ),
+                      ]),
+                    ],
+                  ),
+                ),
+
+                // --- Data & Sync Section ---
+                const SizedBox(height: 24),
+                FadeInUp(
+                  delay: const Duration(milliseconds: 300),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _sectionTitle(context, l10n.sectionDataSync, fontFamily),
+                      _settingsGroup(context, [
+                        _actionItem(
+                          context,
+                          icon: HugeIcons.strokeRoundedCloudUpload,
+                          title: l10n.backupToFile,
+                          fontFamily: fontFamily,
+                          onTap: () => _handleBackup(l10n, fontFamily),
+                        ),
+                        _divider(theme),
+                        _actionItem(
+                          context,
+                          icon: HugeIcons.strokeRoundedCloudDownload,
+                          title: l10n.restoreFromFile,
+                          fontFamily: fontFamily,
+                          onTap: () => _handleRestore(l10n, fontFamily),
+                        ),
+                        _divider(theme),
+                        _actionItem(
+                          context,
+                          icon: HugeIcons.strokeRoundedDelete02,
+                          title: l10n.clearAllData,
+                          isDestructive: true,
+                          fontFamily: fontFamily,
+                          onTap: () => _handleClearData(l10n, fontFamily),
+                        ),
+                      ]),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 24),
+                FadeInUp(
+                  delay: const Duration(milliseconds: 400),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _sectionTitle(context, l10n.sectionAbout, fontFamily),
+                      _settingsGroup(context, [
+                        _actionItem(
+                          context,
+                          icon: HugeIcons.strokeRoundedComment01,
+                          title: l10n.sendFeedback,
+                          fontFamily: fontFamily,
+                          onTap: () {},
+                        ),
+                        _divider(theme),
+                        _actionItem(
+                          context,
+                          icon: HugeIcons.strokeRoundedInformationSquare,
+                          title: l10n.version,
+                          trailing: "1.0.0",
+                          fontFamily: fontFamily,
+                          onTap: () {},
+                        ),
+                      ]),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 30),
+                if (user != null)
+                  FadeInUp(
+                    delay: const Duration(milliseconds: 500),
+                    child: SizedBox(
+                      width: double.infinity,
+                      child: OutlinedButton(
+                        onPressed: () async {
+                          await _authService.signOut();
+                        },
+                        style: OutlinedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          side: BorderSide(
+                            color: theme.colorScheme.error.withOpacity(0.5),
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(18),
+                          ),
+                          foregroundColor: theme.colorScheme.error,
+                        ),
+                        child: Text(
+                          l10n.signOut,
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontFamily: fontFamily,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                const SizedBox(height: 40),
+                FadeInUp(
+                  delay: const Duration(milliseconds: 600),
+                  child: Center(
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 10,
+                      ),
+                      decoration: BoxDecoration(
+                        color: theme.colorScheme.onBackground.withOpacity(0.05),
+                        borderRadius: BorderRadius.circular(50),
+                        border: Border.all(
+                          color: theme.colorScheme.onBackground.withOpacity(
+                            0.05,
+                          ),
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            "${l10n.developedWith} ",
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: theme.colorScheme.onBackground.withOpacity(
+                                0.6,
+                              ),
+                              fontFamily: fontFamily,
+                            ),
+                          ),
+                          HugeIcon(
+                            icon: HugeIcons.strokeRoundedFavourite,
+                            color: Colors.redAccent,
+                            size: 16,
+                          ),
+                          Text(
+                            " ${l10n.byAuthor} ",
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: theme.colorScheme.onBackground.withOpacity(
+                                0.6,
+                              ),
+                              fontFamily: fontFamily,
+                            ),
+                          ),
+                          Text(
+                            "Mahdi Ehsani",
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                              color: theme.colorScheme.onBackground.withOpacity(
+                                0.9,
+                              ),
+                              fontFamily: "Poppins",
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 20),
+              ],
+            );
+          },
+        ),
+      ),
+    );
+  }
+
+  Widget _sectionTitle(BuildContext context, String text, String fontFamily) {
+    return Padding(
+      padding: const EdgeInsets.only(left: 8, bottom: 10),
+      child: Text(
+        text,
+        style: Theme.of(context).textTheme.titleSmall?.copyWith(
+          fontWeight: FontWeight.w700,
+          color: Theme.of(context).colorScheme.onBackground.withOpacity(0.6),
+          fontFamily: fontFamily,
+        ),
+      ),
+    );
+  }
+
+  Widget _settingsGroup(BuildContext context, List<Widget> children) {
+    final theme = Theme.of(context);
+    return Container(
+      decoration: BoxDecoration(
+        color: theme.colorScheme.onBackground.withOpacity(0.05),
+        borderRadius: BorderRadius.circular(22),
+      ),
+      child: Column(children: children),
+    );
+  }
+
+  Widget _divider(ThemeData theme) {
+    return Divider(
+      height: 1,
+      thickness: 1,
+      indent: 56,
+      endIndent: 16,
+      color: theme.colorScheme.onBackground.withOpacity(0.05),
+    );
+  }
+
+  Widget _buildUserProfileCard(ThemeData theme, User user, String fontFamily) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.primary.withOpacity(0.08),
+        borderRadius: BorderRadius.circular(22),
+      ),
+      child: Row(
+        children: [
+          CircleAvatar(
+            radius: 28,
+            backgroundColor: theme.colorScheme.background,
+            backgroundImage: user.photoURL != null
+                ? NetworkImage(user.photoURL!)
+                : null,
+            child: user.photoURL == null
+                ? HugeIcon(
+                    icon: HugeIcons.strokeRoundedUser,
+                    color: theme.colorScheme.onBackground,
+                  )
+                : null,
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  user.displayName ?? "User",
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.bold,
+                    fontFamily: fontFamily,
+                  ),
+                ),
+                Text(
+                  user.email ?? "",
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: theme.colorScheme.onBackground.withOpacity(0.6),
+                    fontFamily: fontFamily,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSignInCard(
+    ThemeData theme,
+    AppLocalizations l10n,
+    String fontFamily,
+  ) {
+    return InkWell(
+      onTap: () => _authService.signIn(),
+      borderRadius: BorderRadius.circular(22),
+      child: Container(
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: theme.colorScheme.onBackground,
+          borderRadius: BorderRadius.circular(22),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            HugeIcon(
+              icon: HugeIcons.strokeRoundedGoogle,
+              color: theme.colorScheme.background,
+              size: 24,
+            ),
+            const SizedBox(width: 12),
+            Text(
+              l10n.signInSync,
+              style: theme.textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.bold,
+                color: theme.colorScheme.background,
+                fontFamily: fontFamily,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _actionItem(
+    BuildContext context, {
+    required List<List<dynamic>> icon,
+    required String title,
+    String? trailing,
+    bool isDestructive = false,
+    required String fontFamily,
+    required VoidCallback onTap,
+  }) {
+    final theme = Theme.of(context);
+    final color = isDestructive
+        ? theme.colorScheme.error
+        : theme.colorScheme.onBackground;
+
+    return ListTile(
+      onTap: onTap,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(22)),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      leading: Container(
+        padding: const EdgeInsets.all(10),
+        decoration: BoxDecoration(
+          color: color.withOpacity(0.05),
+          shape: BoxShape.circle,
+        ),
+        child: HugeIcon(icon: icon, size: 22, color: color.withOpacity(0.8)),
+      ),
+      title: Text(
+        title,
+        style: theme.textTheme.bodyLarge?.copyWith(
+          fontWeight: FontWeight.w600,
+          color: color,
+          fontFamily: fontFamily,
+        ),
+      ),
+      trailing: trailing != null
+          ? Text(
+              trailing,
+              style: TextStyle(
+                color: theme.colorScheme.onBackground.withOpacity(0.4),
+                fontFamily: fontFamily,
+              ),
+            )
+          : HugeIcon(
+              icon: HugeIcons.strokeRoundedArrowRight01,
+              size: 20,
+              color: theme.colorScheme.onBackground.withOpacity(0.2),
+            ),
+    );
+  }
+
+  Widget _switchItem(
+    BuildContext context, {
+    required List<List<dynamic>> icon,
+    required String title,
+    String? subtitle,
+    required bool value,
+    required String fontFamily,
+    required ValueChanged<bool> onChanged,
+    VoidCallback? onTap, // اضافه شده برای کلیک روی کل سطر
+  }) {
+    final theme = Theme.of(context);
+    return ListTile(
+      onTap: onTap, // اضافه شده برای فراخوانی TimePicker
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(22)),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      leading: Container(
+        padding: const EdgeInsets.all(10),
+        decoration: BoxDecoration(
+          color: theme.colorScheme.onBackground.withOpacity(0.05),
+          shape: BoxShape.circle,
+        ),
+        child: HugeIcon(
+          icon: icon,
+          size: 22,
+          color: theme.colorScheme.onBackground.withOpacity(0.8),
+        ),
+      ),
+      title: Text(
+        title,
+        style: theme.textTheme.bodyLarge?.copyWith(
+          fontWeight: FontWeight.w600,
+          color: theme.colorScheme.onBackground,
+          fontFamily: fontFamily,
+        ),
+      ),
+      subtitle: subtitle != null
+          ? Text(
+              subtitle,
+              style: TextStyle(
+                color: theme.colorScheme.onBackground.withOpacity(0.5),
+                fontSize: 12,
+                fontFamily: fontFamily,
+              ),
+            )
+          : null,
+      trailing: Switch(
+        value: value,
+        onChanged: onChanged,
+        activeColor: theme.colorScheme.background,
+        activeTrackColor: theme.colorScheme.onBackground,
+        inactiveThumbColor: theme.colorScheme.onBackground.withOpacity(0.5),
+        inactiveTrackColor: theme.colorScheme.onBackground.withOpacity(0.1),
+      ),
+    );
+  }
+}

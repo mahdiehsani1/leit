@@ -1,0 +1,54 @@
+{
+  "project_info": {
+    "project_number": "452607076938",
+    "project_id": "leit-b3193",
+    "storage_bucket": "leit-b3193.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:452607076938:android:53d22b4672ffa1092354b3",
+        "android_client_info": {
+          "package_name": "com.mahdi.leit"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "452607076938-pka2od60ubq5j50hcugo8lc2ai7r7ebl.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.mahdi.leit",
+            "certificate_hash": "83ccb2d52c494293f2fda5205dd15770424779c7"
+          }
+        },
+        {
+          "client_id": "452607076938-g1o2841budu0jqh1plebolgcro3bib3t.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyASm4CDb_B368ZhnNBN6YxycQPdhEDV1_E"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "452607076938-g1o2841budu0jqh1plebolgcro3bib3t.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "452607076938-m4k51o2lrdcbhsn90d14e5otknd0hrgj.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.mahdi.leit"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

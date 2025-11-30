@@ -1,0 +1,202 @@
+################################################################################
+# 🧠 Leit – Personal German Learning Companion
+# Developed with ❤️ by **Mahdi Ehsani**
+# A smart, elegant Flutter application for collecting vocabulary, phrases,
+# idioms, word combinations, and structured language notes — all with German,
+# English, and Persian meanings, spaced-repetition training, and high-quality
+# pronunciation support.
+################################################################################
+
+name: leit
+description: "A personal German learning companion built with Flutter 🧠"
+publish_to: "none" # Prevent accidental publication to pub.dev
+
+# 🏗️ App versioning
+# Format: major.minor.patch+build
+version: 1.0.0+1
+
+################################################################################
+# ⚙️ Environment setup
+################################################################################
+environment:
+  sdk: ^3.9.2
+
+################################################################################
+# 📦 Dependencies
+# All the packages used by the app at runtime.
+################################################################################
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_localizations:
+    sdk: flutter
+  intl: ^0.20.2
+
+  # 💠 Cupertino icons (for iOS-style UI)
+  cupertino_icons: ^1.0.8
+
+  # 💦 Native splash screen for smooth startup experience
+  flutter_native_splash: ^2.4.7
+
+  # 🏷️ Tool to safely change your app’s package name, icons, and launcher
+  change_app_package_name: ^1.5.0
+  flutter_launcher_icons: ^0.14.4
+  rename_app: ^1.6.5
+
+  # 🖼️ Huge collection of free icons
+  hugeicons: ^1.1.1
+
+  # ✨ Shimmer effect for loading placeholders
+  shimmer: ^3.0.0
+
+  # 🧭 Elegant bottom navigation bar
+  flashy_tab_bar2: ^0.0.10
+
+  # ✨ Simple yet powerful animations
+  animate_do: ^4.2.0
+
+  # 🧮 Local database (SQLite) for transactions and user data
+  shared_preferences: ^2.5.3
+
+  # 🧠 State management with Provider pattern
+  provider: ^6.1.5+1
+
+  # 🌍 Date, time and number formatting for localization
+  timezone: ^0.10.1
+
+  # 🌍 Timezone handling
+  flutter_timezone: ^3.0.1
+
+  # 🧮 Local database (SQLite) for transactions and user data
+  sqflite: ^2.4.2
+
+  # 📂 File path manipulation
+  path: ^1.9.1
+
+  # 🗂️ Tabbed interface for organizing content
+  tab_indicator_styler: ^2.0.0
+
+  # 📊 Beautiful animated charts and graphs
+  fl_chart: ^1.1.1
+
+  # 🔊 Audio playback for pronunciation support
+  audioplayers: ^6.5.1
+
+  # 📁 File and directory access
+  path_provider: ^2.1.5
+
+  # 🔄 Restart app programmatically (after changing themes, etc.)
+  linear_progress_bar: ^1.2.0
+
+  # 🃏 Card swiper for flashcard-style learning
+  flutter_card_swiper: ^7.2.0
+
+  # 🔈 Text-to-Speech (TTS) for pronunciation
+  flutter_tts: ^4.2.3
+
+  # 🔔 Local notifications for reminders and alerts
+  flutter_local_notifications: ^19.5.0
+
+
+  # 🔥 Firebase Authentication for user sign-in and management
+  firebase_core: ^4.2.1
+  firebase_auth: ^6.1.2
+  google_sign_in: ^7.2.0
+  firebase_crashlytics: ^5.0.5
+  firebase_analytics: ^12.0.4
+
+  # 📤 Content sharing capabilities
+  share_plus: ^12.0.1
+
+  # 📂 File picker for selecting files from device storage
+  file_picker: ^10.3.7
+
+
+
+################################################################################
+# 🧪 Development dependencies
+# Used during development or build time only.
+################################################################################
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+
+  # ✅ Recommended linter for clean, modern Dart code
+  flutter_lints: ^5.0.0
+
+  # 🎯 Generate app icons for Android & iOS
+
+################################################################################
+# 🎨 Flutter Assets, Fonts & Design
+################################################################################
+flutter:
+  uses-material-design: true
+  generate: true 
+
+  # 🖼️ App images and illustrations
+  assets:
+    - assets/images/logo_splash.png
+    - assets/images/app_logo_black.png
+    - assets/images/app_logo_white.png
+    - assets/images/profile.jpg
+    - assets/intro/intro_white_1.png
+    - assets/intro/intro_black_1.png
+    - assets/intro/intro_white_2.png
+    - assets/intro/intro_black_2.png
+    - assets/intro/intro_white_3.png
+    - assets/intro/intro_black_3.png
+
+    
+    
+    
+    
+    
+
+    # - assets/images/analytics.png
+    # - assets/images/budget.png
+    # - assets/images/saving.png
+    # - assets/images/profile.png
+    # - assets/images/empty.png
+    # - assets/images/google_logo.png
+
+  # ✍️ Custom fonts for consistent typography
+  fonts:
+    - family: Poppins
+      fonts:
+        - asset: assets/fonts/Poppins-Regular.ttf
+        - asset: assets/fonts/Poppins-Medium.ttf
+        - asset: assets/fonts/Poppins-Light.ttf
+        - asset: assets/fonts/Poppins-Thin.ttf
+        - asset: assets/fonts/Poppins-Bold.ttf
+
+    - family: IRANSans
+      fonts:
+        - asset: assets/fonts/Iransans-Regular.ttf
+        - asset: assets/fonts/Iransans-Medium.ttf
+        - asset: assets/fonts/Iransans-Light.ttf
+        - asset: assets/fonts/Iransans-Bold.ttf
+
+################################################################################
+# 🚀 Splash screen configuration (flutter_native_splash)
+################################################################################
+flutter_native_splash:
+  color: "#FFFFFF" # Background color during loading
+  image: assets/images/logo_splash.png
+  android_gravity: center
+  ios_content_mode: scaleAspectFit
+  android_12:
+    image: assets/images/logo_splash.png
+    color: "#FFFFFF"
+
+################################################################################
+# 🎯 App Icon configuration (flutter_launcher_icons)
+################################################################################
+flutter_icons:
+  android: true
+  ios: true
+  image_path: "assets/icon/app_icon.png"
+  # Adaptive icon for Android 8.0+ (background left transparent intentionally)
+  adaptive_icon_background: "assets/icon/background.png"
+  adaptive_icon_foreground: "assets/icon/foreground.png"
+  adaptive_icon_monochrome: "assets/icon/monochrome.png"
