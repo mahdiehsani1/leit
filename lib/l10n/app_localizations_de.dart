@@ -282,7 +282,7 @@ class AppLocalizationsDe extends AppLocalizations {
   String get signOut => 'Abmelden';
 
   @override
-  String get signInSync => 'Anmelden zum Synchronisieren';
+  String get signInSync => 'Anmelden mit Google';
 
   @override
   String get developedWith => 'Entwickelt mit';

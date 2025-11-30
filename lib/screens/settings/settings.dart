@@ -3,15 +3,17 @@
 import 'package:animate_do/animate_do.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:hugeicons/hugeicons.dart';
 import 'package:leit/data/database/db_helper.dart';
-import 'package:leit/data/service/backup_service.dart';
-import 'package:leit/data/service/notification_service.dart';
 import 'package:leit/data/service/auth_service.dart';
+import 'package:leit/data/service/cloud_backup_service.dart'; // سرویس جدید ابری
+import 'package:leit/data/service/notification_service.dart';
 import 'package:leit/l10n/app_localizations.dart';
 import 'package:leit/theme/theme_controller.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -23,11 +25,9 @@ class SettingsScreen extends StatefulWidget {
 class _SettingsScreenState extends State<SettingsScreen> {
   final AuthService _authService = AuthService();
 
-  // متغیرهای مربوط به نوتیفیکیشن
   bool _isReminderEnabled = false;
-  int _reminderHour = 10; // ساعت پیش‌فرض
-  int _reminderMinute = 0; // دقیقه پیش‌فرض
-
+  int _reminderHour = 10;
+  int _reminderMinute = 0;
   String _currentLanguageCode = 'en';
 
   @override
@@ -50,8 +50,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   // --- Language Methods ---
-
-  String _getLanguageName(String code, AppLocalizations l10n) {
+  String _getLanguageName(String code) {
     switch (code) {
       case 'de':
         return "Deutsch";
@@ -64,25 +63,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Future<void> _changeLanguage(String code) async {
     final pref = await SharedPreferences.getInstance();
     await pref.setString('language_code', code);
-
-    setState(() {
-      _currentLanguageCode = code;
-    });
+    setState(() => _currentLanguageCode = code);
 
     if (!mounted) return;
-
     const fontFamily = 'Poppins';
     final l10n = AppLocalizations.of(context)!;
-
     Navigator.pop(context);
-
-    _showSnack(
-      l10n.msgLanguageChanged(_getLanguageName(code, l10n)),
-      fontFamily,
-    );
+    _showSnack(l10n.msgLanguageChanged(_getLanguageName(code)), fontFamily);
   }
 
-  void _showLanguageBottomSheet(AppLocalizations l10n, String fontFamily) {
+  void _showLanguageBottomSheet(String fontFamily) {
     showModalBottomSheet(
       context: context,
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
@@ -172,14 +162,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   // --- Notification Methods ---
-
-  /// تابع کمکی برای فرمت نمایش ساعت (مثلا 10:05 AM)
   String _formatTimeOfDay(TimeOfDay time) {
     final localizations = MaterialLocalizations.of(context);
     return localizations.formatTimeOfDay(time, alwaysUse24HourFormat: false);
   }
 
-  /// باز کردن دیالوگ انتخاب ساعت
   Future<void> _pickReminderTime(
     AppLocalizations l10n,
     String fontFamily,
@@ -189,86 +176,35 @@ class _SettingsScreenState extends State<SettingsScreen> {
       initialTime: TimeOfDay(hour: _reminderHour, minute: _reminderMinute),
       builder: (context, child) {
         final theme = Theme.of(context);
-        final colorScheme = theme.colorScheme;
-
-        // تعریف رنگ‌های پایه برای خوانایی بهتر
-        final activeColor = colorScheme.primary;
-        final inactiveColor = colorScheme.onBackground.withOpacity(0.6);
-        final activeBackground = colorScheme.primary.withOpacity(0.15);
-        final inactiveBackground = colorScheme.onBackground.withOpacity(0.05);
-
         return Theme(
           data: theme.copyWith(
             timePickerTheme: TimePickerThemeData(
+              // ... (Same styling as before) ...
               backgroundColor: theme.scaffoldBackgroundColor,
-
-              // --- تنظیمات دایره ساعت (Dial) ---
-              dialBackgroundColor: inactiveBackground,
-              dialHandColor: activeColor,
-              dialTextColor: MaterialStateColor.resolveWith((states) {
-                // اعداد روی ساعت: اگر انتخاب شده باشد سفید (یا رنگ روی پرایمری)، در غیر این صورت رنگ متن عادی
-                return states.contains(MaterialState.selected)
-                    ? colorScheme.onPrimary
-                    : colorScheme.onBackground;
-              }),
-
-              // --- تنظیمات باکس‌های نمایش ساعت و دقیقه (Header) ---
-              hourMinuteShape: const RoundedRectangleBorder(
-                borderRadius: BorderRadius.all(Radius.circular(12)),
+              dialHandColor: theme.colorScheme.primary,
+              dialTextColor: MaterialStateColor.resolveWith(
+                (states) => states.contains(MaterialState.selected)
+                    ? theme.colorScheme.onPrimary
+                    : theme.colorScheme.onBackground,
               ),
-              hourMinuteColor: MaterialStateColor.resolveWith((states) {
-                // پس‌زمینه باکس اعداد: اگر فعال باشد رنگ ملایم پرایمری، وگرنه خاکستری کمرنگ
-                return states.contains(MaterialState.selected)
-                    ? activeBackground
-                    : inactiveBackground;
-              }),
-              hourMinuteTextColor: MaterialStateColor.resolveWith((states) {
-                // متن اعداد: اگر فعال باشد رنگ پرایمری، وگرنه رنگ متن عادی
-                return states.contains(MaterialState.selected)
-                    ? activeColor
-                    : colorScheme.onBackground;
-              }),
-
-              // --- تنظیمات AM/PM ---
-              dayPeriodShape: const RoundedRectangleBorder(
-                borderRadius: BorderRadius.all(Radius.circular(8)),
+              hourMinuteColor: MaterialStateColor.resolveWith(
+                (states) => states.contains(MaterialState.selected)
+                    ? theme.colorScheme.primary.withOpacity(0.15)
+                    : theme.colorScheme.onBackground.withOpacity(0.05),
               ),
-              dayPeriodColor: MaterialStateColor.resolveWith((states) {
-                return states.contains(MaterialState.selected)
-                    ? activeBackground
-                    : Colors.transparent;
-              }),
-              dayPeriodTextColor: MaterialStateColor.resolveWith((states) {
-                return states.contains(MaterialState.selected)
-                    ? activeColor
-                    : inactiveColor;
-              }),
-              dayPeriodBorderSide: BorderSide(
-                color: colorScheme.onBackground.withOpacity(0.2),
-              ),
-
-              // --- سایر تنظیمات ---
-              entryModeIconColor: activeColor, // آیکون کیبورد/ساعت
-              helpTextStyle: TextStyle(
-                fontFamily: fontFamily,
-                fontWeight: FontWeight.bold,
-                color: colorScheme.onBackground,
+              hourMinuteTextColor: MaterialStateColor.resolveWith(
+                (states) => states.contains(MaterialState.selected)
+                    ? theme.colorScheme.primary
+                    : theme.colorScheme.onBackground,
               ),
             ),
-
-            // --- دکمه‌های OK و Cancel ---
             textButtonTheme: TextButtonThemeData(
               style: TextButton.styleFrom(
-                foregroundColor: activeColor,
-                textStyle: TextStyle(
-                  fontFamily: fontFamily,
-                  fontWeight: FontWeight.bold,
-                ),
+                foregroundColor: theme.colorScheme.primary,
               ),
             ),
           ),
           child: MediaQuery(
-            // اطمینان از اینکه تایم پیکر همیشه در حالت ۲۴ ساعته نباشد (اختیاری)
             data: MediaQuery.of(context).copyWith(alwaysUse24HourFormat: false),
             child: child!,
           ),
@@ -282,12 +218,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
         _reminderHour = picked.hour;
         _reminderMinute = picked.minute;
       });
-
-      // ذخیره زمان جدید
       await pref.setInt("notif_hour", picked.hour);
       await pref.setInt("notif_minute", picked.minute);
 
-      // به‌روزرسانی ناتیفیکیشن اگر فعال باشد
       if (_isReminderEnabled) {
         await NotificationService().cancelAll();
         _scheduleNotification(l10n, fontFamily);
@@ -295,16 +228,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
   }
 
-  /// فعال/غیرفعال کردن کلی نوتیفیکیشن
   Future<void> _toggleNotification(
     bool value,
     AppLocalizations l10n,
     String fontFamily,
   ) async {
     final pref = await SharedPreferences.getInstance();
-
     if (value) {
-      // تلاش برای فعال‌سازی
       bool granted = await NotificationService().requestPermissions();
       if (granted) {
         _scheduleNotification(l10n, fontFamily);
@@ -317,14 +247,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
           _showSnack(l10n.msgPermissionDenied, fontFamily, isError: true);
       }
     } else {
-      // غیرفعال کردن
       await NotificationService().cancelAll();
       setState(() => _isReminderEnabled = false);
       await pref.setBool("notif_enabled", false);
     }
   }
 
-  /// متد اختصاصی برای زمان‌بندی (جدا شده برای تمیزی کد)
   Future<void> _scheduleNotification(
     AppLocalizations l10n,
     String fontFamily,
@@ -352,24 +280,40 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
   }
 
-  // --- Data Methods ---
+  // --- Cloud Data Methods (Updated) --- ☁️
 
   Future<void> _handleBackup(AppLocalizations l10n, String fontFamily) async {
+    // بررسی لاگین بودن کاربر
+    if (FirebaseAuth.instance.currentUser == null) {
+      _showSnack(
+        "Please sign in to use Cloud Backup",
+        fontFamily,
+        isError: true,
+      );
+      return;
+    }
+
     _showLoadingDialog();
-    await Future.delayed(const Duration(milliseconds: 500));
-    bool success = await BackupService.exportDatabase();
+    try {
+      // استفاده از سرویس بکاپ ابری جدید
+      await CloudBackupService().uploadBackup();
 
-    if (!mounted) return;
-    Navigator.pop(context);
-
-    if (!success) {
-      _showSnack(l10n.msgBackupFailed, fontFamily, isError: true);
-    } else {
-      _showSnack("Backup saved successfully!", fontFamily);
+      if (!mounted) return;
+      Navigator.pop(context); // بستن لودینگ
+      _showSnack("Backup uploaded to Cloud successfully!", fontFamily);
+    } catch (e) {
+      if (!mounted) return;
+      Navigator.pop(context);
+      _showSnack("Cloud Backup Failed: $e", fontFamily, isError: true);
     }
   }
 
   Future<void> _handleRestore(AppLocalizations l10n, String fontFamily) async {
+    if (FirebaseAuth.instance.currentUser == null) {
+      _showSnack("Please sign in to Restore data", fontFamily, isError: true);
+      return;
+    }
+
     bool confirm =
         await showDialog(
           context: context,
@@ -380,11 +324,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
             title: Text(
               l10n.restoreDialogTitle,
-              style: TextStyle(fontFamily: fontFamily),
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                fontFamily: fontFamily,
+              ),
             ),
             content: Text(
-              l10n.restoreDialogMsg,
-              style: TextStyle(fontFamily: fontFamily),
+              "This will merge your cloud data with current device data.",
+              style: TextStyle(height: 1.4, fontFamily: fontFamily),
             ),
             actions: [
               TextButton(
@@ -404,7 +351,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 child: Text(
                   l10n.btnRestore,
                   style: TextStyle(
-                    color: Colors.redAccent,
+                    color: Colors.blueAccent,
+                    fontWeight: FontWeight.bold,
                     fontFamily: fontFamily,
                   ),
                 ),
@@ -417,47 +365,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
     if (!confirm) return;
 
     _showLoadingDialog();
-    bool success = await BackupService.importDatabase();
+    try {
+      // استفاده از سرویس رستور ابری جدید
+      await CloudBackupService().restoreBackup();
 
-    if (!mounted) return;
-    Navigator.pop(context);
-
-    if (success) {
-      _showSnack(l10n.msgDataRestored, fontFamily);
-    } else {
-      _showSnack(l10n.msgBackupFailed, fontFamily, isError: true);
+      if (!mounted) return;
+      Navigator.pop(context);
+      _showSnack("Data restored from Cloud successfully!", fontFamily);
+    } catch (e) {
+      if (!mounted) return;
+      Navigator.pop(context);
+      _showSnack("Restore Failed: $e", fontFamily, isError: true);
     }
-  }
-
-  void _showLoadingDialog() {
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (_) => Center(
-        child: Container(
-          padding: const EdgeInsets.all(24),
-          decoration: BoxDecoration(
-            color: Theme.of(context).scaffoldBackgroundColor,
-            borderRadius: BorderRadius.circular(20),
-          ),
-          child: CircularProgressIndicator(
-            color: Theme.of(context).colorScheme.onBackground,
-          ),
-        ),
-      ),
-    );
-  }
-
-  void _showSnack(String message, String fontFamily, {bool isError = false}) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message, style: TextStyle(fontFamily: fontFamily)),
-        backgroundColor: isError
-            ? Colors.redAccent.shade200
-            : Theme.of(context).colorScheme.onBackground,
-        behavior: SnackBarBehavior.floating,
-      ),
-    );
   }
 
   Future<void> _handleClearData(
@@ -519,8 +438,130 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
     if (!mounted) return;
     Navigator.pop(context);
-
     _showSnack(l10n.msgDataDeleted, fontFamily, isError: true);
+  }
+
+  // --- Extra Methods ---
+  Future<void> _openStore() async {
+    const packageName = "com.mahdi.leit";
+    final Uri url = Uri.parse("market://details?id=$packageName");
+    final Uri webUrl = Uri.parse(
+      "https://play.google.com/store/apps/details?id=$packageName",
+    );
+    try {
+      if (await canLaunchUrl(url)) {
+        await launchUrl(url, mode: LaunchMode.externalApplication);
+      } else if (await canLaunchUrl(webUrl)) {
+        await launchUrl(webUrl, mode: LaunchMode.externalApplication);
+      }
+    } catch (e) {
+      debugPrint("Error launching store: $e");
+    }
+  }
+
+  Future<void> _showAboutDialog(String fontFamily) async {
+    try {
+      final String langSuffix = _currentLanguageCode == 'de' ? 'de' : 'en';
+      final String assetPath = 'assets/text/about_$langSuffix.txt';
+      String content = await rootBundle.loadString(assetPath);
+
+      showModalBottomSheet(
+        context: context,
+        isScrollControlled: true,
+        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+        shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        ),
+        builder: (ctx) {
+          final theme = Theme.of(context);
+          return DraggableScrollableSheet(
+            initialChildSize: 0.65,
+            minChildSize: 0.4,
+            maxChildSize: 0.9,
+            expand: false,
+            builder: (context, scrollController) {
+              return Column(
+                children: [
+                  Container(
+                    margin: const EdgeInsets.symmetric(vertical: 12),
+                    width: 40,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: theme.colorScheme.onBackground.withOpacity(0.2),
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 16),
+                    child: Text(
+                      "About Leit",
+                      style: theme.textTheme.titleLarge?.copyWith(
+                        fontWeight: FontWeight.bold,
+                        fontFamily: fontFamily,
+                      ),
+                    ),
+                  ),
+                  Divider(
+                    height: 1,
+                    color: theme.colorScheme.onBackground.withOpacity(0.1),
+                  ),
+                  Expanded(
+                    child: SingleChildScrollView(
+                      controller: scrollController,
+                      padding: const EdgeInsets.all(24),
+                      child: Text(
+                        content,
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          height: 1.6,
+                          fontFamily: fontFamily,
+                          color: theme.colorScheme.onBackground.withOpacity(
+                            0.8,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              );
+            },
+          );
+        },
+      );
+    } catch (e) {
+      _showSnack("Error loading about file: $e", fontFamily, isError: true);
+    }
+  }
+
+  // --- Helper UI Methods ---
+  void _showLoadingDialog() {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => Center(
+        child: Container(
+          padding: const EdgeInsets.all(24),
+          decoration: BoxDecoration(
+            color: Theme.of(context).scaffoldBackgroundColor,
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: CircularProgressIndicator(
+            color: Theme.of(context).colorScheme.onBackground,
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _showSnack(String message, String fontFamily, {bool isError = false}) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message, style: TextStyle(fontFamily: fontFamily)),
+        backgroundColor: isError
+            ? Colors.redAccent.shade200
+            : Theme.of(context).colorScheme.onBackground,
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
   }
 
   @override
@@ -528,7 +569,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final theme = Theme.of(context);
     final themeController = Provider.of<ThemeController>(context);
     final isDarkMode = themeController.themeMode == ThemeMode.dark;
-
     final l10n = AppLocalizations.of(context)!;
     const fontFamily = 'Poppins';
 
@@ -574,18 +614,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     children: [
                       _sectionTitle(context, l10n.sectionGeneral, fontFamily),
                       _settingsGroup(context, [
-                        // Language
                         _actionItem(
                           context,
                           icon: HugeIcons.strokeRoundedGlobe02,
                           title: l10n.langTitle,
-                          trailing: _getLanguageName(
-                            _currentLanguageCode,
-                            l10n,
-                          ),
+                          trailing: _getLanguageName(_currentLanguageCode),
                           fontFamily: fontFamily,
-                          onTap: () =>
-                              _showLanguageBottomSheet(l10n, fontFamily),
+                          onTap: () => _showLanguageBottomSheet(fontFamily),
                         ),
                         _divider(theme),
                         _switchItem(
@@ -600,12 +635,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                               themeController.setTheme(val ? "dark" : "light"),
                         ),
                         _divider(theme),
-                        // Reminder Switch + Time Picker
                         _switchItem(
                           context,
                           icon: HugeIcons.strokeRoundedNotification01,
                           title: l10n.dailyReminderTitle,
-                          // نمایش زمان انتخاب شده به صورت فرمت‌بندی شده
                           subtitle: _formatTimeOfDay(
                             TimeOfDay(
                               hour: _reminderHour,
@@ -616,7 +649,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           fontFamily: fontFamily,
                           onChanged: (val) =>
                               _toggleNotification(val, l10n, fontFamily),
-                          // با کلیک روی آیتم، پیکر باز می‌شود
                           onTap: () => _pickReminderTime(l10n, fontFamily),
                         ),
                       ]),
@@ -624,19 +656,23 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   ),
                 ),
 
-                // --- Data & Sync Section ---
+                // --- Cloud & Sync Section ---
                 const SizedBox(height: 24),
                 FadeInUp(
                   delay: const Duration(milliseconds: 300),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      _sectionTitle(context, l10n.sectionDataSync, fontFamily),
+                      _sectionTitle(
+                        context,
+                        "Cloud & Sync",
+                        fontFamily,
+                      ), // تغییر نام سکشن
                       _settingsGroup(context, [
                         _actionItem(
                           context,
                           icon: HugeIcons.strokeRoundedCloudUpload,
-                          title: l10n.backupToFile,
+                          title: "Backup to Cloud", // متن جدید
                           fontFamily: fontFamily,
                           onTap: () => _handleBackup(l10n, fontFamily),
                         ),
@@ -644,7 +680,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         _actionItem(
                           context,
                           icon: HugeIcons.strokeRoundedCloudDownload,
-                          title: l10n.restoreFromFile,
+                          title: "Restore from Cloud", // متن جدید
                           fontFamily: fontFamily,
                           onTap: () => _handleRestore(l10n, fontFamily),
                         ),
@@ -661,6 +697,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     ],
                   ),
                 ),
+
+                // --- About Section ---
                 const SizedBox(height: 24),
                 FadeInUp(
                   delay: const Duration(milliseconds: 400),
@@ -671,15 +709,23 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       _settingsGroup(context, [
                         _actionItem(
                           context,
-                          icon: HugeIcons.strokeRoundedComment01,
-                          title: l10n.sendFeedback,
+                          icon: HugeIcons.strokeRoundedStar,
+                          title: "Rate on Google Play",
                           fontFamily: fontFamily,
-                          onTap: () {},
+                          onTap: _openStore,
                         ),
                         _divider(theme),
                         _actionItem(
                           context,
                           icon: HugeIcons.strokeRoundedInformationSquare,
+                          title: "About App",
+                          fontFamily: fontFamily,
+                          onTap: () => _showAboutDialog(fontFamily),
+                        ),
+                        _divider(theme),
+                        _actionItem(
+                          context,
+                          icon: HugeIcons.strokeRoundedCpu,
                           title: l10n.version,
                           trailing: "1.0.0",
                           fontFamily: fontFamily,
@@ -689,7 +735,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     ],
                   ),
                 ),
-                const SizedBox(height: 30),
+
+                const SizedBox(height: 40),
                 if (user != null)
                   FadeInUp(
                     delay: const Duration(milliseconds: 500),
@@ -719,6 +766,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       ),
                     ),
                   ),
+
                 const SizedBox(height: 40),
                 FadeInUp(
                   delay: const Duration(milliseconds: 600),
@@ -790,6 +838,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
+  // --- Common Widgets ---
   Widget _sectionTitle(BuildContext context, String text, String fontFamily) {
     return Padding(
       padding: const EdgeInsets.only(left: 8, bottom: 10),
@@ -969,11 +1018,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
     required bool value,
     required String fontFamily,
     required ValueChanged<bool> onChanged,
-    VoidCallback? onTap, // اضافه شده برای کلیک روی کل سطر
+    VoidCallback? onTap,
   }) {
     final theme = Theme.of(context);
     return ListTile(
-      onTap: onTap, // اضافه شده برای فراخوانی TimePicker
+      onTap: onTap,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(22)),
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
       leading: Container(

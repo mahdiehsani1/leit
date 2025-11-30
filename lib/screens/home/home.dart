@@ -3,6 +3,7 @@
 import 'dart:convert';
 import 'dart:math';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_remote_config/firebase_remote_config.dart';
 import 'package:flutter/material.dart';
 import 'package:hugeicons/hugeicons.dart';
 import 'package:animate_do/animate_do.dart';
@@ -13,6 +14,7 @@ import 'package:leit/l10n/app_localizations.dart';
 import 'package:leit/screens/add_item/add_item.dart';
 import 'package:leit/screens/all_items/all_items_screen.dart';
 import 'package:leit/tabs.dart';
+import 'package:lottie/lottie.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -29,15 +31,91 @@ class _HomeScreenState extends State<HomeScreen> {
   List<ItemModel> _searchResults = [];
   final TextEditingController _searchController = TextEditingController();
 
-  // Stores raw DB data, titles are resolved in build()
   List<Map<String, dynamic>> _rawTopCategories = [];
   List<ItemModel> recentItems = [];
+
+  // --- متغیرهای بنر مناسبتی (آپدیت شده برای ۳ رنگ) ---
+  bool _showHolidayBanner = false;
+  String _bannerLottieUrl = "";
+  String _bannerTextDe = "";
+  String _bannerTextEn = "";
+  String _bannerTextFa = "";
+  Color _bannerColorStart = Colors.blue;
+  Color _bannerColorMiddle = Colors.transparent; // رنگ وسط (جدید)
+  Color _bannerColorEnd = Colors.purple;
+  // ---------------------------------------------------
 
   @override
   void initState() {
     super.initState();
     _loadHomeData();
+    _setupRemoteConfig();
     _searchController.addListener(_onSearchChanged);
+  }
+
+  /// دریافت تنظیمات از فایربیس
+  Future<void> _setupRemoteConfig() async {
+    try {
+      final remoteConfig = FirebaseRemoteConfig.instance;
+
+      // در زمان توسعه interval را کم می‌گذاریم تا سریع تغییرات را ببینیم
+      await remoteConfig.setConfigSettings(
+        RemoteConfigSettings(
+          fetchTimeout: const Duration(minutes: 1),
+          minimumFetchInterval: const Duration(minutes: 5),
+        ),
+      );
+
+      await remoteConfig.fetchAndActivate();
+
+      if (mounted) {
+        setState(() {
+          _showHolidayBanner = remoteConfig.getBool('holiday_is_active');
+
+          if (_showHolidayBanner) {
+            _bannerLottieUrl = remoteConfig.getString('holiday_lottie_url');
+            _bannerTextDe = remoteConfig.getString('holiday_text_de');
+            _bannerTextEn = remoteConfig.getString('holiday_text_en');
+            _bannerTextFa = remoteConfig.getString('holiday_text_fa');
+
+            // دریافت رنگ‌ها
+            String color1 = remoteConfig.getString('holiday_color_start');
+            String color2 = remoteConfig.getString(
+              'holiday_color_middle',
+            ); // پارامتر جدید
+            String color3 = remoteConfig.getString('holiday_color_end');
+
+            _bannerColorStart = _hexToColor(color1, defaultColor: Colors.blue);
+
+            // اگر رنگ وسط خالی بود یا تعریف نشده بود، شفاف در نظر می‌گیریم تا نادیده گرفته شود
+            if (color2.isNotEmpty && color2 != "null") {
+              _bannerColorMiddle = _hexToColor(
+                color2,
+                defaultColor: Colors.transparent,
+              );
+            } else {
+              _bannerColorMiddle = Colors.transparent;
+            }
+
+            _bannerColorEnd = _hexToColor(color3, defaultColor: Colors.purple);
+          }
+        });
+      }
+    } catch (e) {
+      debugPrint("Remote Config Error: $e");
+    }
+  }
+
+  Color _hexToColor(String hexString, {required Color defaultColor}) {
+    try {
+      if (hexString.isEmpty) return defaultColor;
+      final buffer = StringBuffer();
+      if (hexString.length == 6 || hexString.length == 7) buffer.write('ff');
+      buffer.write(hexString.replaceFirst('#', ''));
+      return Color(int.parse(buffer.toString(), radix: 16));
+    } catch (e) {
+      return defaultColor;
+    }
   }
 
   @override
@@ -64,27 +142,19 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Future<void> _loadHomeData() async {
     final db = await DBHelper.instance.database;
-
-    // 1. Get last 6 items
     final List<Map<String, dynamic>> recentRows = await db.query(
       "items",
       orderBy: "createdAt DESC",
       limit: 6,
     );
-
-    // 2. Get category counts
     final List<Map<String, dynamic>> typeCounts = await db.rawQuery(
       'SELECT type, COUNT(*) as count FROM items GROUP BY type ORDER BY count DESC',
     );
-
-    // 3. Get all items for search
     final List<Map<String, dynamic>> allRows = await db.query("items");
 
-    // Convert data
     recentItems = recentRows.map((e) => ItemModel.fromDB(e)).toList();
     _allItems = allRows.map((e) => ItemModel.fromDB(e)).toList();
 
-    // Store raw category data
     _rawTopCategories = typeCounts.take(3).map((e) {
       final type = e['type'] as String;
       final count = e['count'] as int;
@@ -119,12 +189,9 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-
-    // Localization & Theme Instances
     final l10n = AppLocalizations.of(context)!;
     final isRtl = Directionality.of(context) == TextDirection.rtl;
     final fontFamily = isRtl ? 'IRANSans' : 'Poppins';
-
     final isSearching = _searchController.text.isNotEmpty;
 
     if (loading) {
@@ -156,8 +223,6 @@ class _HomeScreenState extends State<HomeScreen> {
           padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 16),
           children: [
             const SizedBox(height: 10),
-
-            /// HEADER
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -186,13 +251,22 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
               ],
             ),
-
             const SizedBox(height: 26),
-
             _searchBar(context, l10n, fontFamily),
+            const SizedBox(height: 20),
 
-            const SizedBox(height: 30),
+            // --- نمایش بنر مناسبتی (۳ رنگ) ---
+            if (_showHolidayBanner && !isSearching) ...[
+              FadeInDown(
+                duration: const Duration(milliseconds: 500),
+                child: _buildHolidayBanner(context),
+              ),
+              const SizedBox(height: 30),
+            ] else if (!isSearching) ...[
+              const SizedBox(height: 10),
+            ],
 
+            // --------------------------------
             if (isSearching) ...[
               Text(
                 "${l10n.searchResults} (${_searchResults.length})",
@@ -209,8 +283,8 @@ class _HomeScreenState extends State<HomeScreen> {
                   child: Center(
                     child: Column(
                       children: [
-                        Icon(
-                          Icons.search_off_rounded,
+                        HugeIcon(
+                          icon: HugeIcons.strokeRoundedFileEmpty01,
                           size: 48,
                           color: theme.colorScheme.onBackground.withOpacity(
                             0.3,
@@ -337,7 +411,6 @@ class _HomeScreenState extends State<HomeScreen> {
                 fontFamily: fontFamily,
                 isRtl: isRtl,
                 onTap: () {
-                  // Index 1 is Practice
                   TabsScreen.globalKey.currentState?.changeTab(1);
                 },
               ),
@@ -390,6 +463,133 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  // --- ویجت بنر با پشتیبانی از ۳ رنگ ---
+  Widget _buildHolidayBanner(BuildContext context) {
+    final theme = Theme.of(context);
+
+    // منطق ساخت لیست رنگ‌ها:
+    // اگر رنگ وسط تعریف نشده باشد، فقط شروع و پایان را استفاده می‌کند.
+    List<Color> gradientColors;
+    if (_bannerColorMiddle == Colors.transparent) {
+      gradientColors = [
+        _bannerColorStart.withOpacity(0.25),
+        _bannerColorEnd.withOpacity(0.25),
+      ];
+    } else {
+      gradientColors = [
+        _bannerColorStart.withOpacity(0.25),
+        _bannerColorMiddle.withOpacity(0.25),
+        _bannerColorEnd.withOpacity(0.25),
+      ];
+    }
+
+    return Container(
+      width: double.infinity,
+      constraints: const BoxConstraints(minHeight: 130),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(24),
+        gradient: LinearGradient(
+          colors: gradientColors,
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(24),
+        child: Stack(
+          children: [
+            // دایره تزئینی پس‌زمینه
+            Positioned(
+              right: -20,
+              top: -20,
+              child: CircleAvatar(
+                radius: 50,
+                backgroundColor: _bannerColorEnd.withOpacity(0.1),
+              ),
+            ),
+
+            Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  // Lottie
+                  SizedBox(
+                    width: 100,
+                    height: 100,
+                    child: _bannerLottieUrl.isNotEmpty
+                        ? Lottie.network(
+                            _bannerLottieUrl,
+                            fit: BoxFit.contain,
+                            errorBuilder: (context, error, stackTrace) =>
+                                const Icon(
+                                  Icons.celebration,
+                                  size: 40,
+                                  color: Colors.amber,
+                                ),
+                          )
+                        : const Icon(Icons.celebration, size: 40),
+                  ),
+
+                  const SizedBox(width: 16),
+
+                  // متون
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        if (_bannerTextDe.isNotEmpty)
+                          Text(
+                            _bannerTextDe,
+                            style: theme.textTheme.titleMedium?.copyWith(
+                              fontWeight: FontWeight.bold,
+                              color: theme.colorScheme.onBackground,
+                              fontFamily: 'Poppins',
+                            ),
+                          ),
+
+                        const SizedBox(height: 6),
+
+                        if (_bannerTextEn.isNotEmpty)
+                          Text(
+                            _bannerTextEn,
+                            style: theme.textTheme.bodyMedium?.copyWith(
+                              color: theme.colorScheme.onBackground.withOpacity(
+                                0.8,
+                              ),
+                              fontFamily: 'Poppins',
+                              fontSize: 13,
+                            ),
+                          ),
+
+                        const SizedBox(height: 4),
+
+                        if (_bannerTextFa.isNotEmpty)
+                          Text(
+                            _bannerTextFa,
+                            style: theme.textTheme.bodyMedium?.copyWith(
+                              color: theme.colorScheme.onBackground.withOpacity(
+                                0.7,
+                              ),
+                              fontFamily: 'IRANSans',
+                              fontSize: 12,
+                            ),
+                            textDirection: TextDirection.rtl,
+                          ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ... سایر ویجت‌ها مثل _searchBar و _categoryCard بدون تغییر هستند ...
   Widget _searchBar(
     BuildContext context,
     AppLocalizations l10n,
@@ -428,7 +628,11 @@ class _HomeScreenState extends State<HomeScreen> {
                 contentPadding: const EdgeInsets.symmetric(vertical: 14),
                 suffixIcon: _searchController.text.isNotEmpty
                     ? IconButton(
-                        icon: const Icon(Icons.close),
+                        icon: const HugeIcon(
+                          icon: HugeIcons.strokeRoundedClean,
+                          size: 18,
+                          color: Colors.grey,
+                        ),
                         onPressed: () {
                           _searchController.clear();
                           FocusScope.of(context).unfocus();
@@ -622,7 +826,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   style: theme.textTheme.bodyLarge?.copyWith(
                     color: theme.colorScheme.onBackground,
                     fontWeight: FontWeight.w600,
-                    fontFamily: 'Poppins', // Keep Latin font for German words
+                    fontFamily: 'Poppins',
                   ),
                 ),
                 const SizedBox(height: 4),
@@ -630,7 +834,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   translation,
                   style: theme.textTheme.bodyMedium?.copyWith(
                     color: theme.colorScheme.onBackground.withOpacity(0.6),
-                    fontFamily: fontFamily, // Dynamic font for translation
+                    fontFamily: fontFamily,
                   ),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,

@@ -282,7 +282,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get signOut => 'Sign Out';
 
   @override
-  String get signInSync => 'Sign in to Sync Data';
+  String get signInSync => 'Sign in with Google';
 
   @override
   String get developedWith => 'Developed with';

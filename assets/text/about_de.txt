@@ -1,0 +1,27 @@
+Über Leit
+Version 1.0.0
+
+Leit ist dein intelligenter, datenschutzorientierter Begleiter auf dem Weg zur Beherrschung der deutschen Sprache. Entwickelt mit Sorgfalt und Präzision von Mahdi Ehsani unterstützt dich die App dabei, Wortschatz effizient und wissenschaftlich fundiert zu lernen.
+
+Hauptfunktionen & Funktionsweise
+
+1. Das Leitner-System (Optimiertes Spaced Repetition)
+Im Zentrum von Leit steht das klassische Leitner-Kartensystem in Kombination mit Spaced-Repetition-Logik. Statt zufälliger Wiederholungen plant die App deine Lernzeiten basierend auf deinem Kenntnisstand. Jede Karte wandert durch 6 Boxen – richtige Antworten bringen sie nach vorne, Fehler schicken sie zurück. So entsteht nachhaltiges Langzeitlernen.
+
+2. Umfassendes Vokabelmanagement
+Für jedes Wort kannst du vollständige Informationen speichern: deutsches Wort, englische und persische Übersetzungen, Artikel (der/die/das), Pluralform, Verbformen, Beispielsätze, Synonyme und persönliche Grammatiknotizen.
+
+3. Komplette Offline-Datenspeicherung & Manuelle Backups
+Alle deine Daten bleiben ausschließlich auf deinem Gerät – vollständig offline.
+
+Backup: Exportiere deine gesamte Datenbank als Datei und sichere sie an einem Ort deiner Wahl.
+
+Wiederherstellung: Neues Gerät? Einfach die Backup-Datei importieren und dein gesamter Fortschritt ist sofort verfügbar.
+
+4. Optionales Konto & Minimale Analytik
+Die Nutzung ist komplett anonym möglich. Die Google-Anmeldung ist optional und dient lediglich dazu, die Anzahl aktiver Nutzer zu verstehen und technische Stabilität über Fehlerberichte zu verbessern. Deine Lern- und Vokabeldaten werden niemals in der Cloud gespeichert, sondern bleiben ausschließlich auf deinem Gerät.
+
+5. Visuelle Fortschrittsübersicht
+Das Statistik-Dashboard zeigt deine tägliche Aktivität, deine Antwortgenauigkeit und die Verteilung deiner Karten über alle Lernstufen – klar und motivierend.
+
+Eine konzentrierte und sorgfältig gestaltete Lernumgebung, die dir hilft, Deutsch effektiv und selbstbewusst zu meistern.

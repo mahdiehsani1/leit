@@ -623,7 +623,7 @@ abstract class AppLocalizations {
   /// No description provided for @signInSync.
   ///
   /// In en, this message translates to:
-  /// **'Sign in to Sync Data'**
+  /// **'Sign in with Google'**
   String get signInSync;
 
   /// No description provided for @developedWith.
