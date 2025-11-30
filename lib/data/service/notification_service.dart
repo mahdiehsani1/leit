@@ -21,18 +21,17 @@ class NotificationService {
   Future<void> init() async {
     if (_isInitialized) return;
 
-    // 1. تنظیمات Timezone (برای زمان‌بندی دقیق ضروری است)
+    // 1. تنظیمات Timezone
     await _configureLocalTimeZone();
 
     // 2. تنظیمات اندروید
-    // نکته: فایل 'ic_launcher' یا 'app_icon' باید در پوشه android/app/src/main/res/drawable موجود باشد
     const AndroidInitializationSettings initializationSettingsAndroid =
         AndroidInitializationSettings('@mipmap/ic_launcher');
 
-    // 3. تنظیمات iOS و macOS (کلاس جدید Darwin جایگزین IOSInitializationSettings شده است)
+    // 3. تنظیمات iOS و macOS
     const DarwinInitializationSettings initializationSettingsDarwin =
         DarwinInitializationSettings(
-          requestAlertPermission: false, // مجوزها را بعداً دستی می‌گیریم
+          requestAlertPermission: false,
           requestBadgePermission: false,
           requestSoundPermission: false,
         );
@@ -49,14 +48,12 @@ class NotificationService {
     await flutterLocalNotificationsPlugin.initialize(
       initializationSettings,
       onDidReceiveNotificationResponse: (NotificationResponse response) {
-        // اینجا کدی بنویسید که وقتی کاربر روی نوتیفیکیشن کلیک کرد اجرا شود
         if (response.payload != null) {
           print('Notification payload: ${response.payload}');
-          // مثلاً نویگیت کردن به صفحه خاص
+          // اینجا می‌توانید نویگیشن را هندل کنید
         }
       },
     );
-
     _isInitialized = true;
   }
 
@@ -67,12 +64,12 @@ class NotificationService {
       final String timeZoneName = await FlutterTimezone.getLocalTimezone();
       tz.setLocalLocation(tz.getLocation(timeZoneName));
     } catch (e) {
-      // در صورت خطا، تایم‌زون پیش‌فرض را تنظیم کنید
       tz.setLocalLocation(tz.getLocation('Europe/Berlin'));
     }
   }
 
-  /// درخواست مجوزها (با پشتیبانی کامل اندروید 13 و 14)
+  /// درخواست مجوزها
+  /// (اصلاح شده برای گوگل پلی: درخواست Exact Alarm حذف شد)
   Future<bool> requestPermissions() async {
     if (Platform.isIOS || Platform.isMacOS) {
       final bool? result = await flutterLocalNotificationsPlugin
@@ -88,22 +85,10 @@ class NotificationService {
                 AndroidFlutterLocalNotificationsPlugin
               >();
 
-      // 1. درخواست مجوز نوتیفیکیشن (Android 13+)
+      // فقط درخواست مجوز نوتیفیکیشن برای اندروید 13+ (این مجاز است)
       final bool? grantedNotification = await androidImplementation
           ?.requestNotificationsPermission();
-
-      // 2. بررسی و درخواست مجوز آلارم دقیق (Android 12+)
-      // این بخش برای اندروید 14 حیاتی است
-      bool? grantedExactAlarm = await androidImplementation
-          ?.canScheduleExactNotifications();
-
-      if (grantedExactAlarm == false) {
-        // اگر مجوز نداشت، درخواست می‌دهیم (ممکن است کاربر را به تنظیمات ببرد)
-        grantedExactAlarm = await androidImplementation
-            ?.requestExactAlarmsPermission();
-      }
-
-      return (grantedNotification ?? false) && (grantedExactAlarm ?? false);
+      return grantedNotification ?? false;
     }
     return false;
   }
@@ -116,7 +101,7 @@ class NotificationService {
     required int hour,
     required int minute,
   }) async {
-    // ایجاد کانال نوتیفیکیشن برای اندروید (لازم برای نسخه‌های جدید)
+    // ایجاد کانال نوتیفیکیشن
     const AndroidNotificationChannel channel = AndroidNotificationChannel(
       'daily_reminder_channel',
       'Daily Reminders',
@@ -128,8 +113,8 @@ class NotificationService {
             .resolvePlatformSpecificImplementation<
               AndroidFlutterLocalNotificationsPlugin
             >();
-    await androidPlugin?.createNotificationChannel(channel);
 
+    await androidPlugin?.createNotificationChannel(channel);
     try {
       await flutterLocalNotificationsPlugin.zonedSchedule(
         id,
@@ -147,14 +132,18 @@ class NotificationService {
           ),
           iOS: DarwinNotificationDetails(),
         ),
-        androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+        // ------------------------------------------------------------------
+        // تغییر حیاتی برای گوگل پلی:
+        // استفاده از حالت غیردقیق. این حالت نیاز به مجوز SCHEDULE_EXACT_ALARM ندارد
+        // و باعث می‌شود اپلیکیشن شما تایید شود.
+        // ------------------------------------------------------------------
+        androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
 
         matchDateTimeComponents: DateTimeComponents.time,
       );
-      print("Notification Scheduled for $hour:$minute");
+      print("Notification Scheduled (Inexact) for $hour:$minute");
     } catch (e) {
       print("Error scheduling notification: $e");
-      // اگر خطای امنیتی داد، یعنی مجوز آلارم دقیق نداریم
     }
   }
 
@@ -165,10 +154,25 @@ class NotificationService {
     required String body,
     String? payload,
   }) async {
+    // ایجاد کانال برای اعلان فوری (اضافه شده برای سازگاری)
+    const AndroidNotificationChannel generalChannel =
+        AndroidNotificationChannel(
+          'general_channel_id',
+          'General Notifications',
+          description: 'Notifications for general updates',
+          importance: Importance.max,
+        );
+    final AndroidFlutterLocalNotificationsPlugin? androidPlugin =
+        flutterLocalNotificationsPlugin
+            .resolvePlatformSpecificImplementation<
+              AndroidFlutterLocalNotificationsPlugin
+            >();
+    await androidPlugin?.createNotificationChannel(generalChannel);
+
     const AndroidNotificationDetails androidNotificationDetails =
         AndroidNotificationDetails(
-          'your_channel_id', // شناسه کانال (باید ثابت و یکتا باشد)
-          'General Notifications', // نام کانال
+          'general_channel_id',
+          'General Notifications',
           channelDescription: 'Notifications for general updates',
           importance: Importance.max,
           priority: Priority.high,
@@ -176,7 +180,7 @@ class NotificationService {
         );
     const NotificationDetails notificationDetails = NotificationDetails(
       android: androidNotificationDetails,
-      iOS: DarwinNotificationDetails(), // تنظیمات پیش‌فرض iOS
+      iOS: DarwinNotificationDetails(),
     );
     await flutterLocalNotificationsPlugin.show(
       id,
