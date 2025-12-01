@@ -273,7 +273,10 @@ class AppLocalizationsDe extends AppLocalizations {
   String get clearAllData => 'Alle Daten löschen';
 
   @override
-  String get sendFeedback => 'Feedback senden';
+  String get rateOnGooglePlay => 'Auf Google Play bewerten';
+
+  @override
+  String get aboutApp => 'Über die App';
 
   @override
   String get version => 'Version';
@@ -447,7 +450,7 @@ class AppLocalizationsDe extends AppLocalizations {
   String get sectionExplanation => 'Erklärung';
 
   @override
-  String get sectionSynAnt => 'Synonyme & Antonyme';
+  String get sectionSynAnt => 'Synonyme & Antonyms';
 
   @override
   String get labelSynonyms => 'Synonyme';

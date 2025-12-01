@@ -60,6 +60,10 @@ class _ItemsTabViewState extends State<ItemsTabView> {
         en: _decodeList(e['en']),
         fa: _decodeList(e['fa']),
         examples: _decodeList(e['examples']),
+        // --- Added translations loading here ---
+        examplesEn: _decodeList(e['examplesEn']),
+        examplesFa: _decodeList(e['examplesFa']),
+        // ---------------------------------------
         article: e['article'] as String?,
         plural: e['plural'] as String?,
         prateritum: e['prateritum'] as String?,
@@ -390,7 +394,7 @@ class _ItemsTabViewState extends State<ItemsTabView> {
                           ),
                         ),
 
-                      /// EXAMPLES
+                      /// EXAMPLES (Updated with translations)
                       if (item.examples.isNotEmpty)
                         _sectionTile(
                           context,
@@ -398,30 +402,81 @@ class _ItemsTabViewState extends State<ItemsTabView> {
                           title: l10n.sectionExamples,
                           fontFamily: fontFamily,
                           child: Column(
-                            children: item.examples
-                                .map(
-                                  (t) => Container(
-                                    width: double.infinity,
-                                    margin: const EdgeInsets.symmetric(
-                                      vertical: 6,
-                                    ),
-                                    padding: const EdgeInsets.all(12),
-                                    decoration: BoxDecoration(
-                                      color: theme.colorScheme.onBackground
-                                          .withOpacity(0.04),
-                                      borderRadius: BorderRadius.circular(14),
-                                    ),
-                                    child: Text(
-                                      t,
+                            children: item.examples.asMap().entries.map((
+                              entry,
+                            ) {
+                              final index = entry.key;
+                              final germanEx = entry.value;
+
+                              // بررسی وجود ترجمه برای این ایندکس خاص
+                              final enEx = (index < item.examplesEn.length)
+                                  ? item.examplesEn[index]
+                                  : null;
+                              final faEx = (index < item.examplesFa.length)
+                                  ? item.examplesFa[index]
+                                  : null;
+
+                              return Container(
+                                width: double.infinity,
+                                margin: const EdgeInsets.symmetric(vertical: 6),
+                                padding: const EdgeInsets.all(12),
+                                decoration: BoxDecoration(
+                                  color: theme.colorScheme.onBackground
+                                      .withOpacity(0.04),
+                                  borderRadius: BorderRadius.circular(14),
+                                ),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    // German Text
+                                    Text(
+                                      germanEx,
                                       style: theme.textTheme.bodyMedium
                                           ?.copyWith(
-                                            fontFamily:
-                                                'Poppins', // Examples are German
+                                            fontFamily: 'Poppins',
+                                            height: 1.5,
                                           ),
                                     ),
-                                  ),
-                                )
-                                .toList(),
+
+                                    // English Translation
+                                    if (enEx != null &&
+                                        enEx.trim().isNotEmpty) ...[
+                                      const SizedBox(height: 8),
+                                      Text(
+                                        enEx,
+                                        style: theme.textTheme.bodySmall
+                                            ?.copyWith(
+                                              color: theme
+                                                  .colorScheme
+                                                  .onBackground
+                                                  .withOpacity(0.6),
+                                              fontFamily: 'Poppins',
+                                            ),
+                                      ),
+                                    ],
+
+                                    // Persian Translation
+                                    if (faEx != null &&
+                                        faEx.trim().isNotEmpty) ...[
+                                      const SizedBox(height: 8),
+                                      // Divider if both English and Persian exist? Maybe just spacing.
+                                      Text(
+                                        faEx,
+                                        textDirection: TextDirection.rtl,
+                                        style: theme.textTheme.bodySmall
+                                            ?.copyWith(
+                                              color: theme
+                                                  .colorScheme
+                                                  .onBackground
+                                                  .withOpacity(0.6),
+                                              fontFamily: 'IRANSans',
+                                            ),
+                                      ),
+                                    ],
+                                  ],
+                                ),
+                              );
+                            }).toList(),
                           ),
                         ),
 

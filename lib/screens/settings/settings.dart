@@ -1,5 +1,7 @@
 // ignore_for_file: use_build_context_synchronously, deprecated_member_use, curly_braces_in_flow_control_structures
 
+import 'dart:math';
+
 import 'package:animate_do/animate_do.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
@@ -508,6 +510,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Future<void> _showAboutDialog(String fontFamily) async {
+    // اضافه کردن این خط برای دسترسی به ترجمه‌ها
+    final l10n = AppLocalizations.of(context)!;
+
     try {
       final String langSuffix = _currentLanguageCode == 'de' ? 'de' : 'en';
       final String assetPath = 'assets/text/about_$langSuffix.txt';
@@ -542,7 +547,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   Padding(
                     padding: const EdgeInsets.only(bottom: 16),
                     child: Text(
-                      "About Leit",
+                      l10n.aboutApp, // حالا این متغیر شناخته می‌شود
                       style: theme.textTheme.titleLarge?.copyWith(
                         fontWeight: FontWeight.bold,
                         fontFamily: fontFamily,
@@ -754,7 +759,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         _actionItem(
                           context,
                           icon: HugeIcons.strokeRoundedStar,
-                          title: "Rate on Google Play",
+                          title: l10n.rateOnGooglePlay, // Changed
                           fontFamily: fontFamily,
                           onTap: _openStore,
                         ),
@@ -762,7 +767,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         _actionItem(
                           context,
                           icon: HugeIcons.strokeRoundedInformationSquare,
-                          title: "About App",
+                          title: l10n.aboutApp, // Changed
                           fontFamily: fontFamily,
                           onTap: () => _showAboutDialog(fontFamily),
                         ),

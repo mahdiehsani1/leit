@@ -253,7 +253,7 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
             const SizedBox(height: 26),
             _searchBar(context, l10n, fontFamily),
-            const SizedBox(height: 20),
+            const SizedBox(height: 25),
 
             // --- نمایش بنر مناسبتی (۳ رنگ) ---
             if (_showHolidayBanner && !isSearching) ...[

@@ -14,10 +14,10 @@ class CloudBackupService {
   final FirebaseStorage _storage = FirebaseStorage.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
 
-  // تغییر نام فایل به v2 برای پشتیبانی از ساختار جدید (شامل آمار)
-  String get _fileName => 'backup_v2.json.gz';
+  // تغییر نام فایل به v3 برای پشتیبانی از ساختار جدید (ترجمه مثال‌ها)
+  String get _fileName => 'backup_v3.json.gz';
 
-  /// 📤 آپلود بکاپ کامل (شامل کلمات + وضعیت جعبه‌ها)
+  /// 📤 آپلود بکاپ کامل (شامل کلمات + ترجمه مثال‌ها + وضعیت جعبه‌ها)
   Future<void> uploadBackup() async {
     final user = _auth.currentUser;
     if (user == null) throw Exception("User not logged in");
@@ -25,20 +25,20 @@ class CloudBackupService {
     try {
       final db = await DBHelper.instance.database;
 
-      // ۱. خواندن تمام آیتم‌ها (کلمات)
+      // ۱. خواندن تمام آیتم‌ها (چون ساختار دیتابیس آپدیت شده، ستون‌های examplesEn و examplesFa هم خوانده می‌شوند)
       final List<Map<String, dynamic>> itemsResult = await db.query('items');
 
-      // ۲. خواندن تمام داده‌های لایتنر (آمار و وضعیت جعبه‌ها)
+      // ۲. خواندن تمام داده‌های لایتنر
       final List<Map<String, dynamic>> leitnerResult = await db.query(
         'leitner',
       );
 
       // ۳. ساخت ساختار کلی بکاپ
       final Map<String, dynamic> backupData = {
-        'version': 2,
+        'version': 3, // نسخه ۳
         'timestamp': DateTime.now().millisecondsSinceEpoch,
-        'items': itemsResult, // ذخیره مستقیم مپ‌ها
-        'leitner': leitnerResult, // ذخیره آمار
+        'items': itemsResult,
+        'leitner': leitnerResult,
       };
 
       // ۴. تبدیل به JSON
@@ -57,7 +57,7 @@ class CloudBackupService {
       await ref.putFile(tempFile);
 
       debugPrint(
-        "✅ Full Backup uploaded successfully (Items: ${itemsResult.length}, Stats: ${leitnerResult.length})",
+        "✅ Full Backup v3 uploaded successfully (Items: ${itemsResult.length})",
       );
     } catch (e) {
       debugPrint("❌ Backup Error: $e");
@@ -65,13 +65,22 @@ class CloudBackupService {
     }
   }
 
-  /// 📥 دانلود و بازگردانی بکاپ (هوشمند)
+  /// 📥 دانلود و بازگردانی بکاپ
   Future<void> restoreBackup() async {
     final user = _auth.currentUser;
     if (user == null) throw Exception("User not logged in");
 
     try {
-      final ref = _storage.ref().child('users/${user.uid}/$_fileName');
+      // ابتدا سعی می‌کنیم نسخه ۳ را بگیریم
+      var ref = _storage.ref().child('users/${user.uid}/$_fileName');
+
+      // چک کنیم اگر نسخه ۳ نبود، نسخه ۲ را امتحان کنیم (برای پشتیبانی از قبل)
+      try {
+        await ref.getMetadata();
+      } catch (e) {
+        // اگر v3 نبود، سراغ v2 می‌رویم
+        ref = _storage.ref().child('users/${user.uid}/backup_v2.json.gz');
+      }
 
       // ۱. دانلود فایل
       final Uint8List? compressedBytes = await ref.getData(
@@ -92,12 +101,11 @@ class CloudBackupService {
       List<ItemModel> items = [];
       List<Map<String, dynamic>> leitnerList = [];
 
-      // پشتیبانی از نسخه قدیمی (که فقط لیست بود) و نسخه جدید (که Map است)
       if (decoded is List) {
-        // فرمت قدیمی v1 (فقط آیتم‌ها، بدون آمار)
+        // فرمت قدیمی v1
         items = decoded.map((e) => ItemModel.fromDB(e)).toList();
       } else if (decoded is Map<String, dynamic>) {
-        // فرمت جدید v2 (آیتم‌ها + آمار)
+        // فرمت v2 و v3
         if (decoded['items'] != null) {
           items = (decoded['items'] as List)
               .map((e) => ItemModel.fromDB(e))
@@ -109,13 +117,12 @@ class CloudBackupService {
         }
       }
 
-      // ۴. بازگردانی به دیتابیس (Merge)
+      // ۴. بازگردانی به دیتابیس (Merge & Update)
       final db = await DBHelper.instance.database;
 
       await db.transaction((txn) async {
         // الف) بازگردانی آیتم‌ها
         for (var item in items) {
-          // چک کنیم اگر آیتم وجود ندارد، اضافه کنیم (با حفظ ID)
           final exists = await txn.query(
             'items',
             where: 'id = ?',
@@ -123,7 +130,17 @@ class CloudBackupService {
           );
 
           if (exists.isEmpty) {
+            // اگر آیتم نیست، اینسرت کن
             await txn.insert('items', item.toMap());
+          } else {
+            // [مهم] اگر آیتم هست، آپدیت کن!
+            // این باعث می‌شود اگر فیلدهای جدید (ترجمه مثال‌ها) در بکاپ باشند ولی در گوشی نباشند، اضافه شوند.
+            await txn.update(
+              'items',
+              item.toMap(),
+              where: 'id = ?',
+              whereArgs: [item.id],
+            );
           }
         }
 
@@ -131,7 +148,7 @@ class CloudBackupService {
         for (var l in leitnerList) {
           final int itemId = l['itemId'];
 
-          // ۱. مطمئن شویم آیتم مربوطه وجود دارد (اگر آیتم نباشد، آمار بی‌معنی است)
+          // ۱. مطمئن شویم آیتم مربوطه وجود دارد
           final itemExists = await txn.query(
             'items',
             where: 'id = ?',
@@ -139,8 +156,7 @@ class CloudBackupService {
           );
           if (itemExists.isEmpty) continue;
 
-          // ۲. چک کنیم آیا برای این آیتم قبلاً آماری در دستگاه داریم؟
-          // اگر کاربر روی دستگاه فعلی تمرین کرده باشد، نمی‌خواهیم آمارش با نسخه قدیمی بکاپ خراب شود.
+          // ۲. اگر آمار وجود ندارد، اضافه کن (آمار موجود را دستکاری نمی‌کنیم تا پیشرفت جاری کاربر خراب نشود)
           final statsExist = await txn.query(
             'leitner',
             where: 'itemId = ?',
@@ -148,20 +164,14 @@ class CloudBackupService {
           );
 
           if (statsExist.isEmpty) {
-            // کپی کردن Map برای تغییر آن (حذف ID برای جلوگیری از تداخل)
             final Map<String, dynamic> newStat = Map.from(l);
-            newStat.remove(
-              'id',
-            ); // ID را حذف می‌کنیم تا خود دیتابیس ID جدید بدهد
-
+            newStat.remove('id'); // حذف ID برای جلوگیری از تداخل
             await txn.insert('leitner', newStat);
           }
         }
       });
 
-      debugPrint(
-        "✅ Restore complete. Items: ${items.length}, Stats processed.",
-      );
+      debugPrint("✅ Restore complete. Items processed: ${items.length}");
     } catch (e) {
       debugPrint("❌ Restore Error: $e");
       rethrow;
@@ -174,8 +184,17 @@ class CloudBackupService {
     if (user == null) return;
 
     try {
-      final ref = _storage.ref().child('users/${user.uid}/$_fileName');
-      await ref.delete();
+      // حذف هر دو نسخه احتمالی
+      final refV3 = _storage.ref().child('users/${user.uid}/$_fileName');
+      try {
+        await refV3.delete();
+      } catch (_) {}
+
+      final refV2 = _storage.ref().child('users/${user.uid}/backup_v2.json.gz');
+      try {
+        await refV2.delete();
+      } catch (_) {}
+
       debugPrint("✅ Cloud backup deleted.");
     } catch (e) {
       debugPrint("⚠️ Failed to delete cloud backup: $e");
@@ -186,11 +205,21 @@ class CloudBackupService {
     final user = _auth.currentUser;
     if (user == null) return false;
     try {
+      // چک کردن نسخه ۳
       final ref = _storage.ref().child('users/${user.uid}/$_fileName');
       await ref.getMetadata();
       return true;
     } catch (e) {
-      return false;
+      try {
+        // چک کردن نسخه ۲
+        final refOld = _storage.ref().child(
+          'users/${user.uid}/backup_v2.json.gz',
+        );
+        await refOld.getMetadata();
+        return true;
+      } catch (e2) {
+        return false;
+      }
     }
   }
 }

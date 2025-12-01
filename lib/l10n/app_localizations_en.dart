@@ -273,7 +273,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get clearAllData => 'Clear All Data';
 
   @override
-  String get sendFeedback => 'Send Feedback';
+  String get rateOnGooglePlay => 'Rate on Google Play';
+
+  @override
+  String get aboutApp => 'About App';
 
   @override
   String get version => 'Version';

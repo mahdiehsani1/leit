@@ -602,11 +602,17 @@ abstract class AppLocalizations {
   /// **'Clear All Data'**
   String get clearAllData;
 
-  /// No description provided for @sendFeedback.
+  /// No description provided for @rateOnGooglePlay.
   ///
   /// In en, this message translates to:
-  /// **'Send Feedback'**
-  String get sendFeedback;
+  /// **'Rate on Google Play'**
+  String get rateOnGooglePlay;
+
+  /// No description provided for @aboutApp.
+  ///
+  /// In en, this message translates to:
+  /// **'About App'**
+  String get aboutApp;
 
   /// No description provided for @version.
   ///
