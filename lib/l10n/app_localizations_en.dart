@@ -356,6 +356,23 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get deleteAccount => 'Delete Account';
+
+  @override
+  String get deleteAccountDialogTitle => 'Delete Account Forever?';
+
+  @override
+  String get deleteAccountDialogMsg =>
+      'This action is irreversible. It will permanently delete:\n• Your account\n• Your cloud backups\n• All local data\n\nAre you sure?';
+
+  @override
+  String get msgAccountDeleted => 'Your account and data have been deleted.';
+
+  @override
+  String get msgReauthRequired =>
+      'Security check failed. Please sign out and sign in again to delete your account.';
+
+  @override
   String get introSkip => 'Skip';
 
   @override

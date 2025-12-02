@@ -123,6 +123,12 @@
   "msgLanguageChanged": "Language changed to {lang}.",
   "@msgLanguageChanged": { "placeholders": { "lang": {} } },
 
+  "deleteAccount": "Delete Account",
+  "deleteAccountDialogTitle": "Delete Account Forever?",
+  "deleteAccountDialogMsg": "This action is irreversible. It will permanently delete:\n• Your account\n• Your cloud backups\n• All local data\n\nAre you sure?",
+  "msgAccountDeleted": "Your account and data have been deleted.",
+  "msgReauthRequired": "Security check failed. Please sign out and sign in again to delete your account.",
+
   "introSkip": "Skip",
   "introNext": "Get Started",
   "intro1Title": "Save Words",

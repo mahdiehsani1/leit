@@ -83,4 +83,15 @@ class AuthService {
       return false;
     }
   }
+
+  /// --- متد جدید برای حذف اکانت ---
+  Future<void> deleteUserAccount() async {
+    final user = _auth.currentUser;
+    if (user != null) {
+      // حذف اکانت از فایربیس
+      await user.delete();
+      // خروج کامل از گوگل ساین‌این برای جلوگیری از لاگین خودکار بعدی
+      await GoogleSignIn.instance.signOut();
+    }
+  }
 }

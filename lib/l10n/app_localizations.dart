@@ -752,6 +752,36 @@ abstract class AppLocalizations {
   /// **'Language changed to {lang}.'**
   String msgLanguageChanged(Object lang);
 
+  /// No description provided for @deleteAccount.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete Account'**
+  String get deleteAccount;
+
+  /// No description provided for @deleteAccountDialogTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete Account Forever?'**
+  String get deleteAccountDialogTitle;
+
+  /// No description provided for @deleteAccountDialogMsg.
+  ///
+  /// In en, this message translates to:
+  /// **'This action is irreversible. It will permanently delete:\n• Your account\n• Your cloud backups\n• All local data\n\nAre you sure?'**
+  String get deleteAccountDialogMsg;
+
+  /// No description provided for @msgAccountDeleted.
+  ///
+  /// In en, this message translates to:
+  /// **'Your account and data have been deleted.'**
+  String get msgAccountDeleted;
+
+  /// No description provided for @msgReauthRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Security check failed. Please sign out and sign in again to delete your account.'**
+  String get msgReauthRequired;
+
   /// No description provided for @introSkip.
   ///
   /// In en, this message translates to:

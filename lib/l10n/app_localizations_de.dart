@@ -358,6 +358,23 @@ class AppLocalizationsDe extends AppLocalizations {
   }
 
   @override
+  String get deleteAccount => 'Konto löschen';
+
+  @override
+  String get deleteAccountDialogTitle => 'Konto dauerhaft löschen?';
+
+  @override
+  String get deleteAccountDialogMsg =>
+      'Diese Aktion ist unwiderruflich. Sie löscht dauerhaft:\n• Dein Konto\n• Deine Cloud-Backups\n• Alle lokalen Daten\n\nBist du sicher?';
+
+  @override
+  String get msgAccountDeleted => 'Dein Konto und deine Daten wurden gelöscht.';
+
+  @override
+  String get msgReauthRequired =>
+      'Sicherheitsprüfung fehlgeschlagen. Bitte melde dich ab und erneut an, um das Konto zu löschen.';
+
+  @override
   String get introSkip => 'Überspringen';
 
   @override

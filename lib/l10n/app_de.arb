@@ -123,6 +123,12 @@
   "msgLanguageChanged": "Sprache zu {lang} geändert.",
   "@msgLanguageChanged": { "placeholders": { "lang": {} } },
 
+  "deleteAccount": "Konto löschen",
+  "deleteAccountDialogTitle": "Konto dauerhaft löschen?",
+  "deleteAccountDialogMsg": "Diese Aktion ist unwiderruflich. Sie löscht dauerhaft:\n• Dein Konto\n• Deine Cloud-Backups\n• Alle lokalen Daten\n\nBist du sicher?",
+  "msgAccountDeleted": "Dein Konto und deine Daten wurden gelöscht.",
+  "msgReauthRequired": "Sicherheitsprüfung fehlgeschlagen. Bitte melde dich ab und erneut an, um das Konto zu löschen.",
+
   "introSkip": "Überspringen",
   "introNext": "Loslegen",
   "intro1Title": "Wörter speichern",

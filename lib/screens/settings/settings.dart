@@ -1,4 +1,4 @@
-// ignore_for_file: use_build_context_synchronously, deprecated_member_use, curly_braces_in_flow_control_structures
+// ignore_for_file: use_build_context_synchronously, deprecated_member_use, curly_braces_in_flow_control_structures, unused_import
 
 import 'dart:math';
 
@@ -617,6 +617,100 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
+  // متد جدید برای هندل کردن حذف حساب کاربری
+  Future<void> _handleDeleteAccount(
+    AppLocalizations l10n,
+    String fontFamily,
+  ) async {
+    if (FirebaseAuth.instance.currentUser == null) return;
+    // ۱. نمایش دیالوگ تایید خطرناک
+    bool confirm =
+        await showDialog(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(20),
+            ),
+            title: Text(
+              l10n.deleteAccountDialogTitle,
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                color: Theme.of(context).colorScheme.error,
+                fontFamily: fontFamily,
+              ),
+            ),
+            content: Text(
+              l10n.deleteAccountDialogMsg,
+              style: TextStyle(height: 1.4, fontFamily: fontFamily),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx, false),
+                child: Text(
+                  l10n.btnCancel,
+                  style: TextStyle(
+                    color: Theme.of(
+                      context,
+                    ).colorScheme.onBackground.withOpacity(0.6),
+                    fontFamily: fontFamily,
+                  ),
+                ),
+              ),
+              TextButton(
+                onPressed: () => Navigator.pop(ctx, true),
+                child: Text(
+                  l10n.btnDeleteEverything, // یا متن "Delete Account"
+                  style: TextStyle(
+                    color: Colors.redAccent,
+                    fontWeight: FontWeight.bold,
+                    fontFamily: fontFamily,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ) ??
+        false;
+    if (!confirm) return;
+    _showLoadingDialog();
+    try {
+      // ۲. تلاش برای حذف بکاپ ابری (اول این کار را می‌کنیم تا دسترسی داشته باشیم)
+      try {
+        await CloudBackupService().deleteBackup();
+      } catch (e) {
+        debugPrint("Cloud backup delete failed (maybe didn't exist): $e");
+        // ادامه می‌دهیم، شاید بکاپ نداشته باشد ولی می‌خواهد اکانت را پاک کند
+      }
+      // ۳. حذف داده‌های لوکال
+      await DBHelper.instance.clearAllData();
+      // ۴. حذف اکانت فایربیس
+      await _authService.deleteUserAccount();
+      if (!mounted) return;
+      Navigator.pop(context); // بستن لودینگ
+
+      // ۵. نمایش پیام و خروج
+      _showSnack(l10n.msgAccountDeleted, fontFamily);
+
+      // هدایت به صفحه اول (یا ریستارت)
+      // چون استریم Auth تغییر می‌کند، صفحه خودبخود رفرش می‌شود اما بهتر است تمیز کنیم
+    } on FirebaseAuthException catch (e) {
+      if (!mounted) return;
+      Navigator.pop(context); // بستن لودینگ
+
+      // اگر ارور "requires-recent-login" داد (امنیتی گوگل)
+      if (e.code == 'requires-recent-login') {
+        _showSnack(l10n.msgReauthRequired, fontFamily, isError: true);
+      } else {
+        _showSnack("Error: ${e.message}", fontFamily, isError: true);
+      }
+    } catch (e) {
+      if (!mounted) return;
+      Navigator.pop(context);
+      _showSnack("Error: $e", fontFamily, isError: true);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -746,6 +840,30 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     ],
                   ),
                 ),
+
+                // --- بخش جدید: Account Zone (فقط اگر لاگین باشد) ---
+                if (user != null) ...[
+                  const SizedBox(height: 24),
+                  FadeInUp(
+                    delay: const Duration(milliseconds: 350),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _sectionTitle(context, "Account Zone", fontFamily),
+                        _settingsGroup(context, [
+                          _actionItem(
+                            context,
+                            icon: HugeIcons.strokeRoundedUserRemove01,
+                            title: l10n.deleteAccount,
+                            isDestructive: true,
+                            fontFamily: fontFamily,
+                            onTap: () => _handleDeleteAccount(l10n, fontFamily),
+                          ),
+                        ]),
+                      ],
+                    ),
+                  ),
+                ],
 
                 // --- About Section ---
                 const SizedBox(height: 24),
