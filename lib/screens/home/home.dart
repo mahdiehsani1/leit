@@ -1,4 +1,4 @@
-// ignore_for_file: deprecated_member_use, unused_import
+// ignore_for_file: deprecated_member_use, unused_import, use_build_context_synchronously, unnecessary_null_comparison
 
 import 'dart:convert';
 import 'dart:math';
@@ -15,6 +15,9 @@ import 'package:leit/screens/add_item/add_item.dart';
 import 'package:leit/screens/all_items/all_items_screen.dart';
 import 'package:leit/tabs.dart';
 import 'package:lottie/lottie.dart';
+import 'package:package_info_plus/package_info_plus.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:leit/screens/update/update_dialog.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -51,6 +54,11 @@ class _HomeScreenState extends State<HomeScreen> {
     _loadHomeData();
     _setupRemoteConfig();
     _searchController.addListener(_onSearchChanged);
+
+    // --- اضافه شده: جلوگیری از خطای Dialog قبل از build ---
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _checkForUpdate();
+    });
   }
 
   /// دریافت تنظیمات از فایربیس
@@ -58,7 +66,6 @@ class _HomeScreenState extends State<HomeScreen> {
     try {
       final remoteConfig = FirebaseRemoteConfig.instance;
 
-      // در زمان توسعه interval را کم می‌گذاریم تا سریع تغییرات را ببینیم
       await remoteConfig.setConfigSettings(
         RemoteConfigSettings(
           fetchTimeout: const Duration(minutes: 1),
@@ -78,16 +85,12 @@ class _HomeScreenState extends State<HomeScreen> {
             _bannerTextEn = remoteConfig.getString('holiday_text_en');
             _bannerTextFa = remoteConfig.getString('holiday_text_fa');
 
-            // دریافت رنگ‌ها
             String color1 = remoteConfig.getString('holiday_color_start');
-            String color2 = remoteConfig.getString(
-              'holiday_color_middle',
-            ); // پارامتر جدید
+            String color2 = remoteConfig.getString('holiday_color_middle');
             String color3 = remoteConfig.getString('holiday_color_end');
 
             _bannerColorStart = _hexToColor(color1, defaultColor: Colors.blue);
 
-            // اگر رنگ وسط خالی بود یا تعریف نشده بود، شفاف در نظر می‌گیریم تا نادیده گرفته شود
             if (color2.isNotEmpty && color2 != "null") {
               _bannerColorMiddle = _hexToColor(
                 color2,
@@ -255,7 +258,6 @@ class _HomeScreenState extends State<HomeScreen> {
             _searchBar(context, l10n, fontFamily),
             const SizedBox(height: 25),
 
-            // --- نمایش بنر مناسبتی (۳ رنگ) ---
             if (_showHolidayBanner && !isSearching) ...[
               FadeInDown(
                 duration: const Duration(milliseconds: 500),
@@ -266,7 +268,6 @@ class _HomeScreenState extends State<HomeScreen> {
               const SizedBox(height: 10),
             ],
 
-            // --------------------------------
             if (isSearching) ...[
               Text(
                 "${l10n.searchResults} (${_searchResults.length})",
@@ -467,8 +468,6 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget _buildHolidayBanner(BuildContext context) {
     final theme = Theme.of(context);
 
-    // منطق ساخت لیست رنگ‌ها:
-    // اگر رنگ وسط تعریف نشده باشد، فقط شروع و پایان را استفاده می‌کند.
     List<Color> gradientColors;
     if (_bannerColorMiddle == Colors.transparent) {
       gradientColors = [
@@ -498,7 +497,6 @@ class _HomeScreenState extends State<HomeScreen> {
         borderRadius: BorderRadius.circular(24),
         child: Stack(
           children: [
-            // دایره تزئینی پس‌زمینه
             Positioned(
               right: -20,
               top: -20,
@@ -513,7 +511,6 @@ class _HomeScreenState extends State<HomeScreen> {
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
-                  // Lottie
                   SizedBox(
                     width: 100,
                     height: 100,
@@ -533,7 +530,6 @@ class _HomeScreenState extends State<HomeScreen> {
 
                   const SizedBox(width: 16),
 
-                  // متون
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -589,7 +585,6 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  // ... سایر ویجت‌ها مثل _searchBar و _categoryCard بدون تغییر هستند ...
   Widget _searchBar(
     BuildContext context,
     AppLocalizations l10n,
@@ -845,5 +840,86 @@ class _HomeScreenState extends State<HomeScreen> {
         ],
       ),
     );
+  }
+
+  // --- نسخه کامل جدید متد checkForUpdate ---
+  Future<void> _checkForUpdate() async {
+    final remoteConfig = FirebaseRemoteConfig.instance;
+
+    try {
+      await remoteConfig.setConfigSettings(
+        RemoteConfigSettings(
+          fetchTimeout: const Duration(minutes: 1),
+          minimumFetchInterval: const Duration(minutes: 30),
+        ),
+      );
+
+      await remoteConfig.fetchAndActivate();
+
+      final jsonString = remoteConfig.getString('app_update_info');
+      if (jsonString.isEmpty) return;
+
+      final Map<String, dynamic> updateData = json.decode(jsonString);
+
+      if (updateData['show_dialog'] == false) return;
+
+      PackageInfo packageInfo = await PackageInfo.fromPlatform();
+      String currentVersion = packageInfo.version;
+      String latestVersion = updateData['latest_version'];
+
+      if (currentVersion == latestVersion) return;
+
+      bool isForceUpdate = updateData['force_update'] ?? false;
+
+      if (!isForceUpdate) {
+        final prefs = await SharedPreferences.getInstance();
+        final lastShownTimestamp =
+            prefs.getInt('last_update_dialog_shown') ?? 0;
+        final now = DateTime.now().millisecondsSinceEpoch;
+
+        const int cooldownMillis = 24 * 60 * 60 * 1000;
+
+        if (now - lastShownTimestamp < cooldownMillis) {
+          return;
+        }
+      }
+
+      if (!mounted) return;
+      String currentLangCode = Localizations.localeOf(context).languageCode;
+
+      Map<String, dynamic> contentMap = updateData['content'] ?? {};
+      Map<String, dynamic> localizedContent =
+          contentMap[currentLangCode] ?? contentMap['en'];
+
+      // ignore: dead_code
+      if (localizedContent == null) return;
+
+      if (!mounted) return;
+
+      if (!isForceUpdate) {
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setInt(
+          'last_update_dialog_shown',
+          DateTime.now().millisecondsSinceEpoch,
+        );
+      }
+
+      showDialog(
+        context: context,
+        barrierDismissible: !isForceUpdate,
+        builder: (ctx) => UpdateDialog(
+          title: localizedContent['title'] ?? "Update Available",
+          description:
+              localizedContent['description'] ?? "New version is available.",
+          btnText: localizedContent['btn_text'] ?? "Update",
+          laterText: localizedContent['later_text'] ?? "Later",
+          imageUrl: updateData['image_url'],
+          storeUrl: updateData['store_url'],
+          forceUpdate: isForceUpdate,
+        ),
+      );
+    } catch (e) {
+      debugPrint("Remote Config Error: $e");
+    }
   }
 }

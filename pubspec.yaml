@@ -114,6 +114,8 @@ dependencies:
 
   # 🎥 Lottie animations for engaging UI
   lottie: ^3.3.2
+  # 📦 Package info for app metadata
+  package_info_plus: ^9.0.0
 
 
 ################################################################################
