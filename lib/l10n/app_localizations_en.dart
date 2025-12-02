@@ -282,6 +282,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get version => 'Version';
 
   @override
+  String get openSourceLicenses => 'Open Source Licenses';
+
+  @override
   String get signOut => 'Sign Out';
 
   @override

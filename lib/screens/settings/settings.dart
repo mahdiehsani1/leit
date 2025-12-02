@@ -31,6 +31,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
   int _reminderHour = 10;
   int _reminderMinute = 0;
   String _currentLanguageCode = 'en';
+  // نسخه برنامه به صورت هاردکد شده (یا می‌توان از پکیج package_info_plus استفاده کرد)
+  final String _appVersion = "1.0.0";
 
   @override
   void initState() {
@@ -510,7 +512,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Future<void> _showAboutDialog(String fontFamily) async {
-    // اضافه کردن این خط برای دسترسی به ترجمه‌ها
     final l10n = AppLocalizations.of(context)!;
 
     try {
@@ -547,7 +548,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   Padding(
                     padding: const EdgeInsets.only(bottom: 16),
                     child: Text(
-                      l10n.aboutApp, // حالا این متغیر شناخته می‌شود
+                      l10n.aboutApp,
                       style: theme.textTheme.titleLarge?.copyWith(
                         fontWeight: FontWeight.bold,
                         fontFamily: fontFamily,
@@ -583,6 +584,25 @@ class _SettingsScreenState extends State<SettingsScreen> {
     } catch (e) {
       _showSnack("Error loading about file: $e", fontFamily, isError: true);
     }
+  }
+
+  // نمایش صفحه لایسنس‌های فلاتر
+  void _showLicensePage() {
+    final l10n = AppLocalizations.of(context)!;
+    showLicensePage(
+      context: context,
+      applicationName: l10n.appName,
+      applicationVersion: _appVersion,
+      applicationIcon: Container(
+        padding: const EdgeInsets.all(8.0),
+        child: Image.asset(
+          'assets/images/logo_splash.png',
+          width: 56,
+          height: 56,
+        ),
+      ),
+      applicationLegalese: '© ${DateTime.now().year} Mahdi Ehsani',
+    );
   }
 
   // --- Helper UI Methods ---
@@ -660,7 +680,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               TextButton(
                 onPressed: () => Navigator.pop(ctx, true),
                 child: Text(
-                  l10n.btnDeleteEverything, // یا متن "Delete Account"
+                  l10n.btnDeleteEverything,
                   style: TextStyle(
                     color: Colors.redAccent,
                     fontWeight: FontWeight.bold,
@@ -675,12 +695,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
     if (!confirm) return;
     _showLoadingDialog();
     try {
-      // ۲. تلاش برای حذف بکاپ ابری (اول این کار را می‌کنیم تا دسترسی داشته باشیم)
+      // ۲. تلاش برای حذف بکاپ ابری
       try {
         await CloudBackupService().deleteBackup();
       } catch (e) {
         debugPrint("Cloud backup delete failed (maybe didn't exist): $e");
-        // ادامه می‌دهیم، شاید بکاپ نداشته باشد ولی می‌خواهد اکانت را پاک کند
       }
       // ۳. حذف داده‌های لوکال
       await DBHelper.instance.clearAllData();
@@ -691,14 +710,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
       // ۵. نمایش پیام و خروج
       _showSnack(l10n.msgAccountDeleted, fontFamily);
-
-      // هدایت به صفحه اول (یا ریستارت)
-      // چون استریم Auth تغییر می‌کند، صفحه خودبخود رفرش می‌شود اما بهتر است تمیز کنیم
     } on FirebaseAuthException catch (e) {
       if (!mounted) return;
       Navigator.pop(context); // بستن لودینگ
 
-      // اگر ارور "requires-recent-login" داد (امنیتی گوگل)
       if (e.code == 'requires-recent-login') {
         _showSnack(l10n.msgReauthRequired, fontFamily, isError: true);
       } else {
@@ -841,7 +856,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   ),
                 ),
 
-                // --- بخش جدید: Account Zone (فقط اگر لاگین باشد) ---
+                // --- Account Zone (if logged in) ---
                 if (user != null) ...[
                   const SizedBox(height: 24),
                   FadeInUp(
@@ -877,7 +892,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         _actionItem(
                           context,
                           icon: HugeIcons.strokeRoundedStar,
-                          title: l10n.rateOnGooglePlay, // Changed
+                          title: l10n.rateOnGooglePlay,
                           fontFamily: fontFamily,
                           onTap: _openStore,
                         ),
@@ -885,18 +900,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         _actionItem(
                           context,
                           icon: HugeIcons.strokeRoundedInformationSquare,
-                          title: l10n.aboutApp, // Changed
+                          title: l10n.aboutApp,
                           fontFamily: fontFamily,
                           onTap: () => _showAboutDialog(fontFamily),
                         ),
                         _divider(theme),
+                        // اینجا بجای Version گزینه Open Source Licenses را اضافه کردیم
                         _actionItem(
                           context,
-                          icon: HugeIcons.strokeRoundedCpu,
-                          title: l10n.version,
-                          trailing: "1.0.0",
+                          icon: HugeIcons
+                              .strokeRoundedLayers01, // آیکون مرتبط با پکیج‌ها
+                          title: l10n.openSourceLicenses,
                           fontFamily: fontFamily,
-                          onTap: () {},
+                          onTap: _showLicensePage,
                         ),
                       ]),
                     ],
@@ -935,64 +951,82 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   ),
 
                 const SizedBox(height: 40),
+                // Footer: Developer info & Version
                 FadeInUp(
                   delay: const Duration(milliseconds: 600),
                   child: Center(
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 10,
-                      ),
-                      decoration: BoxDecoration(
-                        color: theme.colorScheme.onBackground.withOpacity(0.05),
-                        borderRadius: BorderRadius.circular(50),
-                        border: Border.all(
-                          color: theme.colorScheme.onBackground.withOpacity(
-                            0.05,
+                    child: Column(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 10,
+                          ),
+                          decoration: BoxDecoration(
+                            color: theme.colorScheme.onBackground.withOpacity(
+                              0.05,
+                            ),
+                            borderRadius: BorderRadius.circular(50),
+                            border: Border.all(
+                              color: theme.colorScheme.onBackground.withOpacity(
+                                0.05,
+                              ),
+                            ),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                "${l10n.developedWith} ",
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: theme.colorScheme.onBackground
+                                      .withOpacity(0.6),
+                                  fontFamily: fontFamily,
+                                ),
+                              ),
+                              HugeIcon(
+                                icon: HugeIcons.strokeRoundedFavourite,
+                                color: Colors.redAccent,
+                                size: 16,
+                              ),
+                              Text(
+                                " ${l10n.byAuthor} ",
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: theme.colorScheme.onBackground
+                                      .withOpacity(0.6),
+                                  fontFamily: fontFamily,
+                                ),
+                              ),
+                              Text(
+                                "Mahdi Ehsani",
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.bold,
+                                  color: theme.colorScheme.onBackground
+                                      .withOpacity(0.9),
+                                  fontFamily: "Poppins",
+                                ),
+                              ),
+                            ],
                           ),
                         ),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text(
-                            "${l10n.developedWith} ",
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: theme.colorScheme.onBackground.withOpacity(
-                                0.6,
-                              ),
-                              fontFamily: fontFamily,
+                        const SizedBox(height: 12),
+                        // استایل جدید و خفن برای ورژن برنامه
+                        Text(
+                          "v$_appVersion",
+                          style: TextStyle(
+                            fontSize: 10,
+                            letterSpacing: 1.5,
+                            fontWeight: FontWeight.w500,
+                            color: theme.colorScheme.onBackground.withOpacity(
+                              0.4,
                             ),
+                            fontFamily: "Poppins",
                           ),
-                          HugeIcon(
-                            icon: HugeIcons.strokeRoundedFavourite,
-                            color: Colors.redAccent,
-                            size: 16,
-                          ),
-                          Text(
-                            " ${l10n.byAuthor} ",
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: theme.colorScheme.onBackground.withOpacity(
-                                0.6,
-                              ),
-                              fontFamily: fontFamily,
-                            ),
-                          ),
-                          Text(
-                            "Mahdi Ehsani",
-                            style: TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.bold,
-                              color: theme.colorScheme.onBackground.withOpacity(
-                                0.9,
-                              ),
-                              fontFamily: "Poppins",
-                            ),
-                          ),
-                        ],
-                      ),
+                        ),
+                      ],
                     ),
                   ),
                 ),

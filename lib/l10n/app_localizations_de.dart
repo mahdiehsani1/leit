@@ -282,6 +282,9 @@ class AppLocalizationsDe extends AppLocalizations {
   String get version => 'Version';
 
   @override
+  String get openSourceLicenses => 'Open-Source-Lizenzen';
+
+  @override
   String get signOut => 'Abmelden';
 
   @override

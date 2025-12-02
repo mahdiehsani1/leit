@@ -1,5 +1,4 @@
 About Leit
-Version 1.0.0
 
 Leit is your intelligent, privacy-first companion for mastering the German language.
 Created with care and precision by Mahdi Ehsani, the app helps you build and retain vocabulary through proven scientific methods.
@@ -7,26 +6,27 @@ Created with care and precision by Mahdi Ehsani, the app helps you build and ret
 Key Features & How It Works
 
 1. The Leitner System (Spaced Repetition Done Right)
-At the heart of Leit is the classic Leitner box method enhanced with spaced repetition.
-Instead of reviewing words randomly, the app schedules your practice sessions based on performance.
+At the heart of Leit is the classic Leitner box method enhanced with smart spaced repetition.
+Instead of reviewing words randomly, the app schedules your practice sessions based on your performance.
 Each card moves through 6 levels—correct answers move it forward, mistakes send it back—ensuring true long-term learning.
 
-2. Advanced Vocabulary Management
-Each entry can hold everything you need for complete understanding: the German word, English and Persian translations, article (der/die/das), plural form, verb conjugations, example sentences, synonyms, and your personal grammar notes.
+2. Comprehensive Vocabulary & Audio
+Each entry holds everything you need for mastery: German word, English and Persian translations, articles (der/die/das), plural forms, verb conjugations, and synonyms.
+Plus, utilize the integrated Text-to-Speech feature to practice pronunciation for every item.
 
 3. Secure Cloud Backup & Sync
 Never lose your progress.
 Sign in securely with your Google account to enable Cloud Backup.
-You can back up your database to your private cloud storage and restore it on any device.
-Your data remains private: backups are stored in a secure, user-specific directory that only you can access.
+Your database is encrypted and stored in your private directory on Google Firebase, allowing you to restore your progress on any device.
 
-4. Privacy & Data Control
-You are in full control.
+4. Privacy, Transparency & Control
+We value your data privacy:
 - Offline First: The app works perfectly without internet.
-- Minimal Analytics: We only collect anonymous crash reports to improve stability.
-- Data Ownership: You can delete your local data or your cloud backups at any time from the Settings menu.
+- Local Notifications: Daily reminders are scheduled directly on your device for maximum privacy.
+- Open Source Transparency: You can view the open-source libraries we use in Settings.
+- Full Ownership: You can clear your local data or permanently delete your account and cloud backups instantly from the 'Account Zone'.
 
 5. Visual Progress Insights
-Stay motivated with a clear Statistics dashboard that shows your daily activity, answer accuracy, and how your learning cards are distributed across all levels.
+Stay motivated with a clear Statistics dashboard showing your daily activity, accuracy trends, and card distribution across all learning boxes.
 
-A focused and thoughtfully designed experience to help you learn German efficiently and confidently.
+A focused experience designed to help you learn German efficiently and confidently.

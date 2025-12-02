@@ -1,33 +1,32 @@
 Über Leit
-Version 1.0.0
 
-Leit ist dein intelligenter, datenschutzorientierter Begleiter auf dem Weg zur Beherrschung der deutschen Sprache.
-Entwickelt mit Sorgfalt und Präzision von Mahdi Ehsani unterstützt dich die App dabei, Wortschatz effizient und wissenschaftlich fundiert zu lernen.
+Leit ist Ihr intelligenter Begleiter, bei dem der Datenschutz an erster Stelle steht, um die deutsche Sprache zu meistern.
+Entwickelt mit Sorgfalt und Präzision von Mahdi Ehsani, hilft Ihnen die App, durch bewährte wissenschaftliche Methoden einen dauerhaften Wortschatz aufzubauen.
 
 Hauptfunktionen & Funktionsweise
 
-1. Das Leitner-System (Optimiertes Spaced Repetition)
-Im Zentrum von Leit steht das klassische Leitner-Kartensystem in Kombination mit Spaced-Repetition-Logik.
-Statt zufälliger Wiederholungen plant die App deine Lernzeiten basierend auf deinem Kenntnisstand.
-Jede Karte wandert durch 6 Boxen – richtige Antworten bringen sie nach vorne, Fehler schicken sie zurück.
-So entsteht nachhaltiges Langzeitlernen.
+1. Das Leitner-System (Verteilte Wiederholung)
+Das Herzstück von Leit ist die klassische Leitner-Box-Methode, optimiert durch intelligente Intervallwiederholungen (Spaced Repetition).
+Anstatt Wörter zufällig zu wiederholen, plant die App Ihre Übungseinheiten basierend auf Ihrer Leistung.
+Jede Karte durchläuft 6 Stufen – richtige Antworten bewegen sie vorwärts, Fehler werfen sie zurück – was ein echtes Langzeitlernen garantiert.
 
-2. Umfassendes Vokabelmanagement
-Für jedes Wort kannst du vollständige Informationen speichern: deutsches Wort, englische und persische Übersetzungen, Artikel (der/die/das), Pluralform, Verbformen, Beispielsätze, Synonyme und persönliche Grammatiknotizen.
+2. Umfassendes Vokabelmanagement & Audio
+Jeder Eintrag enthält alles, was Sie benötigen: das deutsche Wort, englische und persische Übersetzungen, Artikel (der/die/das), Pluralformen, Verbkonjugationen und Synonyme.
+Nutzen Sie zudem die integrierte Text-to-Speech-Funktion, um die Aussprache für jedes Element zu üben.
 
 3. Sicheres Cloud-Backup & Sync
-Verliere niemals deinen Fortschritt.
-Melde dich sicher mit deinem Google-Konto an, um das Cloud-Backup zu aktivieren.
-Du kannst deine Datenbank in deinem privaten Cloud-Speicher sichern und auf jedem Gerät wiederherstellen.
-Deine Daten bleiben privat: Backups werden in einem sicheren, benutzerspezifischen Verzeichnis gespeichert, auf das nur du Zugriff hast.
+Verlieren Sie niemals Ihren Fortschritt.
+Melden Sie sich sicher mit Ihrem Google-Konto an, um das Cloud-Backup zu aktivieren.
+Ihre Datenbank wird verschlüsselt in Ihrem privaten Verzeichnis auf Google Firebase gespeichert, sodass Sie Ihren Fortschritt auf jedem Gerät wiederherstellen können.
 
-4. Privatsphäre & Datenkontrolle
-Du hast die volle Kontrolle.
-- Offline First: Die App funktioniert auch ohne Internet einwandfrei.
-- Minimale Analytik: Wir sammeln nur anonyme Fehlerberichte, um die Stabilität zu verbessern.
-- Dateneigentum: Du kannst deine lokalen Daten oder deine Cloud-Backups jederzeit über das Einstellungsmenü löschen.
+4. Datenschutz, Transparenz & Kontrolle
+Wir schätzen Ihre Privatsphäre:
+- Offline-First: Die App funktioniert problemlos ohne Internet.
+- Lokale Benachrichtigungen: Tägliche Erinnerungen werden für maximalen Datenschutz direkt auf Ihrem Gerät geplant.
+- Open-Source-Transparenz: In den Einstellungen können Sie die verwendeten Open-Source-Bibliotheken einsehen.
+- Volle Kontrolle: Sie können Ihre lokalen Daten löschen oder Ihr Konto und Ihre Cloud-Backups im „Account Zone“-Bereich dauerhaft entfernen.
 
-5. Visuelle Fortschrittsübersicht
-Das Statistik-Dashboard zeigt deine tägliche Aktivität, deine Antwortgenauigkeit und die Verteilung deiner Karten über alle Lernstufen – klar und motivierend.
+5. Visuelle Fortschrittsanalyse
+Bleiben Sie motiviert mit einem klaren Statistik-Dashboard, das Ihre tägliche Aktivität, Genauigkeitstrends und die Verteilung der Karten über alle Lernboxen hinweg anzeigt.
 
-Eine konzentrierte und sorgfältig gestaltete Lernumgebung, die dir hilft, Deutsch effektiv und selbstbewusst zu meistern.
+Ein fokussiertes Erlebnis, das Ihnen hilft, Deutsch effizient und selbstbewusst zu lernen.
