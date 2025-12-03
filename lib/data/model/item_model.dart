@@ -103,4 +103,37 @@ class ItemModel {
       createdAt: map['createdAt'],
     );
   }
+
+  factory ItemModel.fromAIJson(Map<String, dynamic> map) {
+    // تابع کمکی برای تبدیل امن لیست‌ها
+    List<String> toListStr(dynamic val) {
+      if (val is List) {
+        return val.map((e) => e.toString()).toList();
+      }
+      return [];
+    }
+
+    return ItemModel(
+      id: null, // چون هنوز در دیتابیس لوکال ذخیره نشده
+      type: map['type'] ?? 'word',
+      german: map['german'] ?? '',
+      en: toListStr(map['en']),
+      fa: toListStr(map['fa']),
+      examples: toListStr(map['examples']),
+      examplesEn: toListStr(map['examplesEn']),
+      examplesFa: toListStr(map['examplesFa']),
+      article: map['article'],
+      plural: map['plural'],
+      prateritum: map['prateritum'],
+      perfekt: map['perfekt'],
+      partizip: map['partizip'],
+      synonyms: toListStr(map['synonyms']),
+      antonyms: toListStr(map['antonyms']),
+      explanation: map['explanation'],
+      level: map['level'] ?? 'A1',
+      tags: map['tags'],
+      notes: map['notes'],
+      createdAt: DateTime.now().millisecondsSinceEpoch,
+    );
+  }
 }
