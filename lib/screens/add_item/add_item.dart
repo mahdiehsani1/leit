@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:hugeicons/hugeicons.dart';
 import 'package:leit/data/database/db_helper.dart';
 import 'package:leit/data/model/item_model.dart';
+import 'package:leit/data/service/ai_service.dart'; // سرویس هوش مصنوعی
 import 'package:leit/data/service/leitner_service.dart';
 import 'package:leit/l10n/app_localizations.dart';
 
@@ -59,6 +60,8 @@ class _AddItemScreenState extends State<AddItemScreen> {
   final TextEditingController _expressionExplanationController =
       TextEditingController();
   final TextEditingController _tagsController = TextEditingController();
+
+  bool _isMagicLoading = false; // متغیر لودینگ برای دکمه هوش مصنوعی
 
   @override
   void initState() {
@@ -126,6 +129,136 @@ class _AddItemScreenState extends State<AddItemScreen> {
       if (typeStr.contains(value.name)) return value;
     }
     return null;
+  }
+
+  // --- Magic Fill Method ---
+  Future<void> _handleMagicFill() async {
+    final text = _germanController.text.trim();
+    if (text.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Please enter a German word first!")),
+      );
+      return;
+    }
+
+    setState(() => _isMagicLoading = true);
+
+    try {
+      // درخواست به سرویس هوش مصنوعی
+      final ItemModel? result = await AIService.instance.magicFill(text);
+
+      if (result != null && mounted) {
+        setState(() {
+          // 1. تعیین نوع کلمه
+          _selectedType = _getTypeFromDbString(result.type) ?? ContentType.word;
+
+          // 2. ترجمه‌ها (انگلیسی و فارسی)
+          _enTranslations = result.en.isNotEmpty
+              ? result.en.map((e) => TextEditingController(text: e)).toList()
+              : [TextEditingController()];
+
+          _faTranslations = result.fa.isNotEmpty
+              ? result.fa.map((e) => TextEditingController(text: e)).toList()
+              : [TextEditingController()];
+
+          // 3. مثال‌ها
+          if (result.examples.isNotEmpty) {
+            _exampleGroups.clear();
+            for (int i = 0; i < result.examples.length; i++) {
+              _exampleGroups.add({
+                'de': TextEditingController(text: result.examples[i]),
+                'en': TextEditingController(
+                  text: (i < result.examplesEn.length)
+                      ? result.examplesEn[i]
+                      : '',
+                ),
+                'fa': TextEditingController(
+                  text: (i < result.examplesFa.length)
+                      ? result.examplesFa[i]
+                      : '',
+                ),
+              });
+            }
+          } else {
+            // اگر مثالی نبود یک گروه خالی بگذار تا UI خراب نشود
+            _exampleGroups = [
+              {
+                'de': TextEditingController(),
+                'en': TextEditingController(),
+                'fa': TextEditingController(),
+              },
+            ];
+          }
+
+          // 4. فیلدهای اختصاصی بر اساس نوع
+          if (_selectedType == ContentType.word) {
+            if (result.article != null &&
+                ['der', 'die', 'das'].contains(result.article)) {
+              _selectedArticle = result.article!;
+            }
+            if (result.plural != null) {
+              _nounPluralController.text = result.plural!;
+            }
+          } else if (_selectedType == ContentType.verb) {
+            if (result.prateritum != null) {
+              _verbPastSimpleController.text = result.prateritum!;
+            }
+            if (result.perfekt != null) {
+              _verbPastPerfectController.text = result.perfekt!;
+            }
+            if (result.partizip != null) {
+              _verbPartizipController.text = result.partizip!;
+            }
+          }
+
+          // 5. مترادف و متضاد (برای صفت)
+          if (result.synonyms != null && result.synonyms!.isNotEmpty) {
+            _adjSynonyms = result.synonyms!
+                .map((e) => TextEditingController(text: e))
+                .toList();
+          }
+          if (result.antonyms != null && result.antonyms!.isNotEmpty) {
+            _adjAntonyms = result.antonyms!
+                .map((e) => TextEditingController(text: e))
+                .toList();
+          }
+
+          // 6. توضیحات و تگ‌ها
+          if (result.explanation != null) {
+            _expressionExplanationController.text = result.explanation!;
+          }
+          if (result.tags != null) {
+            _tagsController.text = result.tags!;
+          }
+          if (result.notes != null) {
+            _notesController.text = result.notes!;
+          }
+
+          // 7. سطح
+          if (["A1", "A2", "B1", "B2", "C1", "C2"].contains(result.level)) {
+            _selectedLevel = result.level;
+          }
+        });
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text("✨ Magic Fill Successful!"),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text("Magic Fill Failed: $e"),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isMagicLoading = false);
+    }
   }
 
   @override
@@ -392,6 +525,25 @@ class _AddItemScreenState extends State<AddItemScreen> {
                     icon: HugeIcons.strokeRoundedTextFont,
                     fontFamily: 'Poppins',
                     l10n: l10n,
+                    // --- اضافه کردن دکمه جادویی در انتهای فیلد متنی ---
+                    suffixIcon: IconButton(
+                      onPressed: _isMagicLoading ? null : _handleMagicFill,
+                      tooltip: "Magic Fill with AI",
+                      icon: _isMagicLoading
+                          ? const SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2.5,
+                                color: Colors.amber,
+                              ),
+                            )
+                          : const HugeIcon(
+                              icon: HugeIcons.strokeRoundedAiMagic,
+                              color: Colors.amber,
+                              size: 24,
+                            ),
+                    ),
                   ),
                   fontFamily: fontFamily,
                 ),
@@ -992,6 +1144,7 @@ class _AddItemScreenState extends State<AddItemScreen> {
     int maxLines = 1,
     required String fontFamily,
     required AppLocalizations l10n,
+    Widget? suffixIcon,
   }) {
     final theme = Theme.of(context);
     return Row(
@@ -1027,6 +1180,7 @@ class _AddItemScreenState extends State<AddItemScreen> {
                 fontFamily: fontFamily, // فونت هینت هم پیروی می‌کند
               ),
               border: InputBorder.none,
+              suffixIcon: suffixIcon,
             ),
             validator: (value) =>
                 (controller == _germanController &&
