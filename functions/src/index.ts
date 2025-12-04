@@ -1,37 +1,48 @@
-import {onCall, HttpsError} from "firebase-functions/v2/https";
-import {setGlobalOptions} from "firebase-functions/v2";
+import { onCall, HttpsError } from "firebase-functions/v2/https";
+import { setGlobalOptions } from "firebase-functions/v2";
 import * as admin from "firebase-admin";
-import {GoogleGenerativeAI} from "@google/generative-ai";
+import { GoogleGenerativeAI } from "@google/generative-ai";
 
-setGlobalOptions({maxInstances: 10});
-
-if (admin.apps.length === 0) {
-  admin.initializeApp();
-}
-const db = admin.firestore();
-
-if (!process.env.GEMINI_API_KEY) {
-  throw new Error("❌ Missing GEMINI_API_KEY in environment variables");
-}
-
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-
-const model = genAI.getGenerativeModel({
-  model: "gemini-1.5-flash-latest",
-  generationConfig: {
-    responseMimeType: "application/json",
-  },
+// ----------------------- Global Config -----------------------
+setGlobalOptions({
+  region: "europe-west1",
+  maxInstances: 10,
 });
 
+if (!admin.apps.length) {
+  admin.initializeApp();
+}
+
+const db = admin.firestore();
+
+// ----------------------- Cloud Function -----------------------
 export const magicFillWord = onCall(
-  {region: "europe-west1"},
+  {
+    region: "europe-west1",
+    memory: "256MiB",
+    enforceAppCheck: false, // در پروداکشن true کنید
+  },
+
   async (request) => {
-    // --- Authentication ---
+    // ------------------------------------------------------------
+    // 1. Auth Check
+    // ------------------------------------------------------------
     if (!request.auth) {
       throw new HttpsError("unauthenticated", "User must be logged in.");
     }
 
-    // --- Input validation ---
+    // ------------------------------------------------------------
+    // 2. Read API Key
+    // ------------------------------------------------------------
+    const apiKey = process.env.GEMINI_API_KEY;
+    if (!apiKey) {
+      console.error("❌ GEMINI_API_KEY not found in .env");
+      throw new HttpsError("internal", "Server configuration error.");
+    }
+
+    // ------------------------------------------------------------
+    // 3. Validate Input
+    // ------------------------------------------------------------
     const rawWord = request.data.word;
     if (!rawWord || typeof rawWord !== "string") {
       throw new HttpsError("invalid-argument", "Word is required.");
@@ -39,135 +50,106 @@ export const magicFillWord = onCall(
 
     const queryWord = rawWord.trim().toLowerCase();
 
-    // --- Cache Check ---
+    // ------------------------------------------------------------
+    // 4. Check Cache
+    // ------------------------------------------------------------
     const cacheRef = db.collection("vocabulary_cache").doc(queryWord);
     const cacheDoc = await cacheRef.get();
 
     if (cacheDoc.exists) {
-      return {source: "cache", data: cacheDoc.data()};
+      console.log(`✅ Cache hit: ${queryWord}`);
+      return {
+        source: "cache",
+        data: cacheDoc.data(),
+      };
     }
 
-    // --- Prompt ---
+    console.log(`🤖 Processing via Gemini: ${queryWord}`);
+
+    // ------------------------------------------------------------
+    // 5. Setup Gemini with JSON Config
+    // ------------------------------------------------------------
+    const genAI = new GoogleGenerativeAI(apiKey);
+
+    const model = genAI.getGenerativeModel({
+      model: "gemini-2.5-flash", 
+      generationConfig: {
+        responseMimeType: "application/json",
+      },
+    });
+
+    // ------------------------------------------------------------
+    // Prompt
+    // ------------------------------------------------------------
     const prompt = `
-    Analyze the German term: "${rawWord}".
-    You are a backend API for a Leitner box app. Return ONLY a JSON object.
-    
-    Strict Output Schema Rules:
-    1. "type": Must be EXACTLY one of these strings: 
-       ["word", "verb", "adjective", "adverb", "nounPhrase", "sentence", 
-       "idiom", "verbNounPhrase"]
-       - Use "word" for generic nouns.
-    
-    2. "german": The corrected German term (Capitalized if noun).
-    
-    3. Translations (Arrays):
-       - "en": List of English translations.
-       - "fa": List of Persian translations.
-    
-    4. Examples (Arrays must have equal length):
-       - "examples": List of German example sentences (A1-B2 level).
-       - "examplesEn": Corresponding English translations.
-       - "examplesFa": Corresponding Persian translations.
-    
-    5. Type Specific Fields (Return null if not applicable):
-       - If type is "word":
-         "article": "der", "die", or "das".
-         "plural": The plural form.
-       
-       - If type is "verb":
-         "prateritum": e.g., "spielte".
-         "perfekt": e.g., "hat gespielt".
-         "partizip": e.g., "gespielt" (Partizip II).
-       
-       - If type is "adjective":
-         "synonyms": List of German synonyms.
-         "antonyms": List of German antonyms.
-       
-       - If type is "adverb", "idiom", "sentence", "nounPhrase", 
-         "verbNounPhrase":
-         "explanation": A usage note or grammar explanation in Persian.
-    
-    6. General:
-       - "level": CEFR level ("A1", "A2", "B1", "B2", "C1").
-       - "tags": A string of comma-separated tags.
-       - "notes": Any additional short note (optional, or null).
+Analyze the German term: "${rawWord}". 
+You are a backend API for a Leitner app.
 
-    Json:
-    `;
+CRITICAL RULES:
+1. Output MUST be valid JSON.
+2. "type" field MUST be one of: 
+   ["word", "verb", "adjective", "adverb", "nounPhrase", "sentence", "idiom", "verbNounPhrase"] 
+   - Use "word" for general nouns.
+3. If a field is not applicable, return null (do not omit it).
 
-    // --- AI request & JSON cleanup ---
+JSON Structure:
+{
+  "type": "string",
+  "german": "Corrected German term (Capitalized if noun)",
+  "en": ["English translation 1", "English translation 2"],
+  "fa": ["ترجمه فارسی ۱", "ترجمه فارسی ۲"],
+  "examples": ["German example sentence"],
+  "examplesEn": ["English translation of example"],
+  "examplesFa": ["ترجمه فارسی مثال"],
+  "level": "A1|A2|B1|B2|C1|C2",
+  "article": "der|die|das|null",
+  "plural": "Plural form or null",
+  "prateritum": "Präteritum form or null",
+  "perfekt": "Perfekt form or null",
+  "partizip": "Partizip II form or null",
+  "synonyms": ["synonym1"] or null,
+  "antonyms": ["antonym1"] or null,
+  "explanation": "Explanation in Persian (for idioms/grammar) or null",
+  "tags": "tag1, tag2",
+  "notes": "string or null"
+}
+`;
+
+    // ------------------------------------------------------------
+    // 6. Generate & Save
+    // ------------------------------------------------------------
     try {
       const result = await model.generateContent(prompt);
-      let responseText = result.response.text();
 
-      // ░░░░░░░░░ Clean Markdown + Unicode garbage ░░░░░░░░░
-      responseText = responseText
+      let rawResponse = result.response.text().trim();
+
+      // Clean up just in case (though responseMimeType usually ensures clean JSON)
+      rawResponse = rawResponse
         .replace(/```json/g, "")
         .replace(/```/g, "")
-        .replace(/\u2028|\u2029|\u200f|\u200e/g, "") // Remove RTL/LTR characters
         .trim();
 
-      // ░░░░░░░░░ Log for debugging ░░░░░░░░░
-      console.log("=== RAW GEMINI OUTPUT START ===");
-      console.log(responseText);
-      console.log("=== RAW GEMINI OUTPUT END ===");
+      const finalJSON = JSON.parse(rawResponse);
 
-      // ░░░░░░░░░ Extract JSON blocks ░░░░░░░░░
-      // Attempt to find JSON structure by matching braces
-      const jsonBlocks = responseText.match(/\{[\s\S]*?\}/g);
-
-      // If no blocks found, try parsing the whole cleaned text directly as a fallback
-      if (!jsonBlocks || jsonBlocks.length === 0) {
-         try {
-            const directParse = JSON.parse(responseText);
-            // If successful, proceed with saving
-            const finalData = {
-              ...directParse,
-              createdAt: Date.now(),
-              fetchedAt: admin.firestore.FieldValue.serverTimestamp(),
-            };
-            await cacheRef.set(finalData);
-            return {source: "api", data: finalData};
-         } catch(e) {
-            throw new HttpsError("internal", "No JSON object found in AI output.");
-         }
-      }
-
-      let parsed = null;
-
-      // Try all blocks until a valid JSON is found
-      for (const block of jsonBlocks) {
-        try {
-          // remove trailing comma before closing brace/bracket if present
-          const cleaned = block.replace(/,(\s*[}\]])/g, "$1");
-
-          parsed = JSON.parse(cleaned);
-          // If parse succeeds, we assume this is our JSON
-          break;
-        } catch (e) {
-          continue;
-        }
-      }
-
-      if (!parsed) {
-        throw new HttpsError("internal", "AI returned invalid JSON.");
-      }
-
-      // --- Final object ---
-      const finalData = {
-        ...parsed,
+      const dataToSave = {
+        ...finalJSON,
+        originalQuery: queryWord,
         createdAt: Date.now(),
         fetchedAt: admin.firestore.FieldValue.serverTimestamp(),
       };
 
-      // Save to cache
-      await cacheRef.set(finalData);
+      await cacheRef.set(dataToSave);
 
-      return {source: "api", data: finalData};
-
-    } catch (error) {
-      console.error("Gemini Error:", error);
-      throw new HttpsError("internal", "AI processing failed.");
+      return {
+        source: "api",
+        data: dataToSave,
+      };
+    } catch (err: any) {
+      console.error("❌ Gemini Error:", err);
+      throw new HttpsError(
+        "internal",
+        `AI processing failed: ${err?.message || "Unknown error"}`
+      );
     }
   }
 );

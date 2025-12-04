@@ -14,7 +14,6 @@ import 'package:leit/theme/theme.dart';
 import 'package:leit/theme/theme_controller.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-
 import 'firebase_options.dart';
 
 // تعریف کلید نویگیشن به صورت گلوبال
