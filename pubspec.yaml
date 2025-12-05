@@ -109,6 +109,7 @@ dependencies:
   firebase_messaging: ^16.0.4
   firebase_storage: ^13.0.4
   cloud_functions: ^6.0.4
+  cloud_firestore: ^6.1.0
 
   # 🌐 Launch URLs in the device browser
   url_launcher: ^6.3.2
@@ -117,6 +118,10 @@ dependencies:
   lottie: ^3.3.2
   # 📦 Package info for app metadata
   package_info_plus: ^9.0.0
+
+  # 🧠 ML Kit Language Identification
+  google_mlkit_language_id: ^0.13.0
+  
 
 
 ################################################################################
