@@ -1,3 +1,5 @@
+// ignore_for_file: curly_braces_in_flow_control_structures
+
 import 'package:cloud_functions/cloud_functions.dart';
 import 'package:flutter/foundation.dart';
 import 'package:leit/data/model/item_model.dart';
@@ -16,28 +18,25 @@ class AIService {
     region: 'europe-west1',
   );
 
-  // متغیری برای پیگیری درخواست فعال (اصل ۶ در سمت کلاینت)
   bool _isRequestActive = false;
 
-  Future<ItemModel?> magicFill(String word) async {
-    // جلوگیری از درخواست همزمان (اصل ۶)
-    if (_isRequestActive) {
-      debugPrint("⚠️ Duplicate request blocked.");
-      return null;
-    }
-
+  Future<ItemModel?> magicFill(String word, String? userSelectedType) async {
+    // جلوگیری از درخواست همزمان (Concurrency Control)
+    if (_isRequestActive) return null;
     _isRequestActive = true;
 
     try {
-      debugPrint("✨ MagicFill: Requesting data for '$word'...");
+      debugPrint(
+        "✨ MagicFill: Requesting '$word' [Type: $userSelectedType]...",
+      );
 
       final callable = _functions.httpsCallable('magicFillWord');
 
-      // تنظیم تایم‌اوت سمت کلاینت (اصل ۵ و ۹)
+      // افزایش تایم‌اوت به ۸۰ ثانیه (۲۰ ثانیه بیشتر از سرور)
       final result = await callable
-          .call({"word": word})
+          .call({"word": word, "userType": userSelectedType})
           .timeout(
-            const Duration(seconds: 45),
+            const Duration(seconds: 80),
             onTimeout: () {
               throw FirebaseFunctionsException(
                 message: "Request timed out",
@@ -53,23 +52,21 @@ class AIService {
       return ItemModel.fromAIJson(data);
     } on FirebaseFunctionsException catch (e) {
       debugPrint("❌ Cloud Function Error: ${e.code} - ${e.message}");
-
-      // اصل ۹: ترجمه خطاها به زبان قابل فهم
       String userMessage = "An error occurred.";
-      if (e.code == 'permission-denied') {
+      if (e.code == 'permission-denied')
         userMessage = "Premium subscription required.";
-      } else if (e.code == 'resource-exhausted') {
-        userMessage = "Daily limit reached or too many requests.";
-      } else if (e.code == 'invalid-argument') {
-        userMessage = "Invalid word entered.";
-      }
+      else if (e.code == 'resource-exhausted')
+        userMessage = "Daily limit reached.";
+      else if (e.code == 'invalid-argument')
+        userMessage = e.message ?? "Invalid input.";
+      else if (e.code == 'deadline-exceeded')
+        userMessage = "Server took too long. Try again.";
 
       throw AIServiceException(userMessage, e.code);
     } catch (e) {
       debugPrint("❌ General Error: $e");
       throw AIServiceException("Connection failed. Check internet.", "unknown");
     } finally {
-      // آزاد کردن قفل درخواست (اصل ۶)
       _isRequestActive = false;
     }
   }

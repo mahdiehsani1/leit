@@ -1,4 +1,4 @@
-// ignore_for_file: unused_import
+// ignore_for_file: unused_import, curly_braces_in_flow_control_structures
 
 import 'dart:math'; // برای max
 import 'package:leit/data/database/db_helper.dart';
@@ -135,9 +135,9 @@ class LeitnerService {
       m.easeFactor = newEf;
 
       // آپدیت تقریبی جعبه
-      if (m.lastInterval < 3)
+      if (m.lastInterval < 3) {
         m.box = 1;
-      else if (m.lastInterval < 10)
+      } else if (m.lastInterval < 10)
         m.box = 2;
       else if (m.lastInterval < 30)
         m.box = 3;

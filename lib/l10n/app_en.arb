@@ -240,5 +240,16 @@
   "catVerbNoun": "Verb–Noun Phrases",
   "catIdioms": "Idioms",
   "catSentences": "Sentences",
-  "catUnknown": "Unknown"
+  "catUnknown": "Unknown",
+
+  "btnYes": "Yes",
+  "btnNo": "No",
+  "magicFillTooltip": "Magic Fill with AI",
+  "msgMagicFillSuccess": "Data received successfully ✨",
+  "errLoginRequiredAI": "Please log in to use AI features.",
+  "errNoInternet": "No internet connection. Please check your network.",
+  "errInvalidGerman": "Input does not appear to be a valid German term.",
+  "errPremiumRequired": "Premium subscription required.",
+  "dialogOverwriteTitle": "Overwrite Data?",
+  "dialogOverwriteContent": "Translation fields are already populated. Do you want to overwrite them with AI data?"
 }

@@ -688,4 +688,37 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get catUnknown => 'Unknown';
+
+  @override
+  String get btnYes => 'Yes';
+
+  @override
+  String get btnNo => 'No';
+
+  @override
+  String get magicFillTooltip => 'Magic Fill with AI';
+
+  @override
+  String get msgMagicFillSuccess => 'Data received successfully ✨';
+
+  @override
+  String get errLoginRequiredAI => 'Please log in to use AI features.';
+
+  @override
+  String get errNoInternet =>
+      'No internet connection. Please check your network.';
+
+  @override
+  String get errInvalidGerman =>
+      'Input does not appear to be a valid German term.';
+
+  @override
+  String get errPremiumRequired => 'Premium subscription required.';
+
+  @override
+  String get dialogOverwriteTitle => 'Overwrite Data?';
+
+  @override
+  String get dialogOverwriteContent =>
+      'Translation fields are already populated. Do you want to overwrite them with AI data?';
 }

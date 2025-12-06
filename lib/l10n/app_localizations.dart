@@ -7,6 +7,7 @@ import 'package:intl/intl.dart' as intl;
 
 import 'app_localizations_de.dart';
 import 'app_localizations_en.dart';
+import 'app_localizations_fa.dart';
 
 // ignore_for_file: type=lint
 
@@ -96,6 +97,7 @@ abstract class AppLocalizations {
   static const List<Locale> supportedLocales = <Locale>[
     Locale('de'),
     Locale('en'),
+    Locale('fa'),
   ];
 
   /// No description provided for @tabHome.
@@ -1405,6 +1407,66 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Unknown'**
   String get catUnknown;
+
+  /// No description provided for @btnYes.
+  ///
+  /// In en, this message translates to:
+  /// **'Yes'**
+  String get btnYes;
+
+  /// No description provided for @btnNo.
+  ///
+  /// In en, this message translates to:
+  /// **'No'**
+  String get btnNo;
+
+  /// No description provided for @magicFillTooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Magic Fill with AI'**
+  String get magicFillTooltip;
+
+  /// No description provided for @msgMagicFillSuccess.
+  ///
+  /// In en, this message translates to:
+  /// **'Data received successfully ✨'**
+  String get msgMagicFillSuccess;
+
+  /// No description provided for @errLoginRequiredAI.
+  ///
+  /// In en, this message translates to:
+  /// **'Please log in to use AI features.'**
+  String get errLoginRequiredAI;
+
+  /// No description provided for @errNoInternet.
+  ///
+  /// In en, this message translates to:
+  /// **'No internet connection. Please check your network.'**
+  String get errNoInternet;
+
+  /// No description provided for @errInvalidGerman.
+  ///
+  /// In en, this message translates to:
+  /// **'Input does not appear to be a valid German term.'**
+  String get errInvalidGerman;
+
+  /// No description provided for @errPremiumRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Premium subscription required.'**
+  String get errPremiumRequired;
+
+  /// No description provided for @dialogOverwriteTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Overwrite Data?'**
+  String get dialogOverwriteTitle;
+
+  /// No description provided for @dialogOverwriteContent.
+  ///
+  /// In en, this message translates to:
+  /// **'Translation fields are already populated. Do you want to overwrite them with AI data?'**
+  String get dialogOverwriteContent;
 }
 
 class _AppLocalizationsDelegate
@@ -1418,7 +1480,7 @@ class _AppLocalizationsDelegate
 
   @override
   bool isSupported(Locale locale) =>
-      <String>['de', 'en'].contains(locale.languageCode);
+      <String>['de', 'en', 'fa'].contains(locale.languageCode);
 
   @override
   bool shouldReload(_AppLocalizationsDelegate old) => false;
@@ -1431,6 +1493,8 @@ AppLocalizations lookupAppLocalizations(Locale locale) {
       return AppLocalizationsDe();
     case 'en':
       return AppLocalizationsEn();
+    case 'fa':
+      return AppLocalizationsFa();
   }
 
   throw FlutterError(

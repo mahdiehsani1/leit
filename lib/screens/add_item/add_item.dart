@@ -1,12 +1,11 @@
-// ignore_for_file: deprecated_member_use, unused_local_variable, use_build_context_synchronously, prefer_conditional_assignment
+// ignore_for_file: deprecated_member_use, unused_local_variable, use_build_context_synchronously, prefer_conditional_assignment, curly_braces_in_flow_control_structures
 
 import 'dart:io';
-import 'package:cloud_firestore/cloud_firestore.dart'; // برای چک کردن پریمیوم
-import 'package:firebase_auth/firebase_auth.dart'; // برای گرفتن کاربر فعلی
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:animate_do/animate_do.dart';
 import 'package:flutter/material.dart';
 import 'package:hugeicons/hugeicons.dart';
-import 'package:google_mlkit_language_id/google_mlkit_language_id.dart';
 import 'package:leit/data/database/db_helper.dart';
 import 'package:leit/data/model/item_model.dart';
 import 'package:leit/data/service/ai_service.dart';
@@ -36,11 +35,7 @@ class AddItemScreen extends StatefulWidget {
 
 class _AddItemScreenState extends State<AddItemScreen> {
   final _formKey = GlobalKey<FormState>();
-
-  // وضعیت پریمیوم کاربر (پیش‌فرض غلط است تا زمانی که از دیتابیس تایید شود)
   bool _isPremiumUser = false;
-
-  final _languageIdentifier = LanguageIdentifier(confidenceThreshold: 0.5);
 
   ContentType? _selectedType;
   final TextEditingController _germanController = TextEditingController();
@@ -75,37 +70,30 @@ class _AddItemScreenState extends State<AddItemScreen> {
   @override
   void initState() {
     super.initState();
-    _checkPremiumStatus(); // چک کردن واقعی وضعیت اشتراک
+    _checkPremiumStatus();
     if (widget.itemToEdit != null) {
       _populateFields(widget.itemToEdit!);
     }
   }
 
-  // --- Premium Check Logic (Real Implementation) ---
   Future<void> _checkPremiumStatus() async {
     final user = FirebaseAuth.instance.currentUser;
-    if (user == null) return;
-
+    if (user == null) {
+      if (mounted) setState(() => _isPremiumUser = false);
+      return;
+    }
     try {
-      // اتصال به دیتابیس و خواندن داکیومنت کاربر
       final doc = await FirebaseFirestore.instance
           .collection('users')
           .doc(user.uid)
           .get();
-
-      if (doc.exists) {
-        final data = doc.data();
-        if (data != null && data['isPremium'] == true) {
-          if (mounted) {
-            setState(() {
-              _isPremiumUser = true;
-            });
-          }
-        }
+      if (doc.exists && doc.data()?['isPremium'] == true) {
+        if (mounted) setState(() => _isPremiumUser = true);
+      } else {
+        if (mounted) setState(() => _isPremiumUser = false);
       }
     } catch (e) {
-      debugPrint("Error checking premium status: $e");
-      // در صورت خطا، پیش‌فرض (false) باقی می‌ماند که امن‌تر است
+      if (mounted) setState(() => _isPremiumUser = false);
     }
   }
 
@@ -195,45 +183,54 @@ class _AddItemScreenState extends State<AddItemScreen> {
     );
   }
 
-  Future<bool> _verifyGermanLanguage(String text) async {
-    if (text.trim().isEmpty) return true;
-    try {
-      final String languageCode = await _languageIdentifier.identifyLanguage(
-        text,
-      );
-      final List<IdentifiedLanguage> possibleLanguages =
-          await _languageIdentifier.identifyPossibleLanguages(text);
-
-      if (languageCode == 'de') return true;
-
-      for (var lang in possibleLanguages) {
-        if (lang.languageTag == 'de' && lang.confidence > 0.3) {
-          return true;
-        }
-      }
-      return false;
-    } catch (e) {
-      return true;
-    }
-  }
-
   Future<void> _handleMagicFill() async {
+    final l10n = AppLocalizations.of(context)!;
     final text = _germanController.text.trim();
 
     if (text.isEmpty) {
-      _showError("لطفاً ابتدا یک کلمه آلمانی وارد کنید.");
+      _showError(l10n.errGermanText);
       return;
     }
-
     if (AuthService().currentUser == null) {
-      _showError("برای استفاده از هوش مصنوعی لطفاً وارد حساب خود شوید.");
+      _showError(l10n.errLoginRequiredAI);
       return;
     }
 
-    final isGerman = await _verifyGermanLanguage(text);
-    if (!isGerman) {
-      _showError("متن وارد شده به نظر آلمانی نیست. لطفاً بررسی کنید.");
-      return;
+    bool hasData =
+        _enTranslations.any((c) => c.text.isNotEmpty) ||
+        _faTranslations.any((c) => c.text.isNotEmpty);
+
+    if (hasData) {
+      bool? confirm = await showDialog<bool>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: Text(
+            l10n.dialogOverwriteTitle,
+            style: TextStyle(fontFamily: _fontFamily),
+          ),
+          content: Text(
+            l10n.dialogOverwriteContent,
+            style: TextStyle(fontFamily: _fontFamily),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: Text(
+                l10n.btnNo,
+                style: TextStyle(fontFamily: _fontFamily),
+              ),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              child: Text(
+                l10n.btnYes,
+                style: TextStyle(fontFamily: _fontFamily),
+              ),
+            ),
+          ],
+        ),
+      );
+      if (confirm != true) return;
     }
 
     try {
@@ -242,35 +239,53 @@ class _AddItemScreenState extends State<AddItemScreen> {
         throw SocketException("No internet");
       }
     } on SocketException catch (_) {
-      _showError("عدم دسترسی به اینترنت. لطفاً اتصال خود را بررسی کنید.");
+      _showError(l10n.errNoInternet);
       return;
     }
 
+    final requestingText = text;
     setState(() => _isMagicLoading = true);
 
     try {
-      final ItemModel? result = await AIService.instance.magicFill(text);
+      final typeName = _selectedType?.name;
+      final ItemModel? result = await AIService.instance.magicFill(
+        text,
+        typeName,
+      );
+
+      if (_germanController.text.trim() != requestingText) {
+        debugPrint("Race condition detected.");
+        return;
+      }
 
       if (result != null && mounted) {
         setState(() {
-          // هوشمندسازی انتخاب نوع
-          final detectedType =
-              _getTypeFromDbString(result.type) ?? ContentType.word;
-
-          if (_selectedType == null || _selectedType != detectedType) {
+          // FIX: فقط اگر کاربر نوعی را انتخاب نکرده باشد، نوع تشخیص داده شده توسط AI را اعمال کن.
+          // اگر کاربر قبلاً نوع را انتخاب کرده، به آن دست نزن (حتی اگر AI چیز دیگری بگوید).
+          if (_selectedType == null) {
+            final detectedType =
+                _getTypeFromDbString(result.type) ?? ContentType.word;
             _selectedType = detectedType;
             _clearTypeSpecificFields();
           }
 
+          if (result.german.isNotEmpty && result.german != requestingText) {
+            _germanController.text = result.german;
+          }
+
           if (result.en.isNotEmpty) {
-            for (var c in _enTranslations) c.dispose();
+            for (var c in _enTranslations) {
+              c.dispose();
+            }
             _enTranslations = result.en
                 .map((e) => TextEditingController(text: e))
                 .toList();
           }
 
           if (result.fa.isNotEmpty) {
-            for (var c in _faTranslations) c.dispose();
+            for (var c in _faTranslations) {
+              c.dispose();
+            }
             _faTranslations = result.fa
                 .map((e) => TextEditingController(text: e))
                 .toList();
@@ -283,7 +298,6 @@ class _AddItemScreenState extends State<AddItemScreen> {
               group['fa']?.dispose();
             }
             _exampleGroups.clear();
-
             for (int i = 0; i < result.examples.length; i++) {
               _exampleGroups.add({
                 'de': TextEditingController(text: result.examples[i]),
@@ -302,10 +316,7 @@ class _AddItemScreenState extends State<AddItemScreen> {
           }
 
           if (_selectedType == ContentType.word) {
-            if (result.article != null &&
-                ['der', 'die', 'das'].contains(result.article)) {
-              _selectedArticle = result.article!;
-            }
+            if (result.article != null) _selectedArticle = result.article!;
             if (result.plural != null) {
               _nounPluralController.text = result.plural!;
             }
@@ -321,14 +332,18 @@ class _AddItemScreenState extends State<AddItemScreen> {
             }
           }
 
-          if (result.synonyms != null && result.synonyms!.isNotEmpty) {
-            for (var c in _adjSynonyms) c.dispose();
+          if (result.synonyms != null) {
+            for (var c in _adjSynonyms) {
+              c.dispose();
+            }
             _adjSynonyms = result.synonyms!
                 .map((e) => TextEditingController(text: e))
                 .toList();
           }
-          if (result.antonyms != null && result.antonyms!.isNotEmpty) {
-            for (var c in _adjAntonyms) c.dispose();
+          if (result.antonyms != null) {
+            for (var c in _adjAntonyms) {
+              c.dispose();
+            }
             _adjAntonyms = result.antonyms!
                 .map((e) => TextEditingController(text: e))
                 .toList();
@@ -344,13 +359,17 @@ class _AddItemScreenState extends State<AddItemScreen> {
             _selectedLevel = result.level;
           }
         });
-
-        _showSuccess("اطلاعات با موفقیت دریافت شد ✨");
+        _showSuccess(l10n.msgMagicFillSuccess);
       }
     } on AIServiceException catch (e) {
-      _showError(e.message);
+      String msg = e.message;
+      if (e.code == 'invalid-argument') {
+        msg = l10n.errInvalidGerman;
+      } else if (e.code == 'permission-denied')
+        msg = l10n.errPremiumRequired;
+      _showError(msg);
     } catch (e) {
-      _showError("خطایی رخ داد: $e");
+      _showError("Error: $e");
     } finally {
       if (mounted) setState(() => _isMagicLoading = false);
     }
@@ -358,7 +377,6 @@ class _AddItemScreenState extends State<AddItemScreen> {
 
   @override
   void dispose() {
-    _languageIdentifier.close();
     _germanController.dispose();
     _notesController.dispose();
     _nounPluralController.dispose();
@@ -367,16 +385,23 @@ class _AddItemScreenState extends State<AddItemScreen> {
     _verbPartizipController.dispose();
     _expressionExplanationController.dispose();
     _tagsController.dispose();
-
-    for (final c in _enTranslations) c.dispose();
-    for (final c in _faTranslations) c.dispose();
+    for (final c in _enTranslations) {
+      c.dispose();
+    }
+    for (final c in _faTranslations) {
+      c.dispose();
+    }
     for (final group in _exampleGroups) {
       group['de']!.dispose();
       group['en']!.dispose();
       group['fa']!.dispose();
     }
-    for (final c in _adjSynonyms) c.dispose();
-    for (final c in _adjAntonyms) c.dispose();
+    for (final c in _adjSynonyms) {
+      c.dispose();
+    }
+    for (final c in _adjAntonyms) {
+      c.dispose();
+    }
     super.dispose();
   }
 
@@ -389,9 +414,7 @@ class _AddItemScreenState extends State<AddItemScreen> {
   }
 
   void _onTypeSelected(ContentType type) {
-    setState(() {
-      _selectedType = type;
-    });
+    setState(() => _selectedType = type);
     _clearTypeSpecificFields();
   }
 
@@ -401,40 +424,13 @@ class _AddItemScreenState extends State<AddItemScreen> {
     final fontFamily = isRtl ? 'IRANSans' : 'Poppins';
 
     if (_formKey.currentState?.validate() != true) return;
-
     if (_selectedType == null) {
       _showError(l10n.errSelectType);
       return;
     }
-
-    final germanText = _germanController.text.trim();
-    final isGerman = await _verifyGermanLanguage(germanText);
-
-    if (!isGerman) {
-      bool? forceSave = await showDialog<bool>(
-        context: context,
-        builder: (ctx) => AlertDialog(
-          title: const Text("⚠️ زبان تشخیص داده نشد"),
-          content: const Text(
-            "به نظر می‌رسد متن وارد شده آلمانی نیست. آیا مطمئن هستید؟",
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(ctx, false),
-              child: const Text("اصلاح می‌کنم"),
-            ),
-            TextButton(
-              onPressed: () => Navigator.pop(ctx, true),
-              child: const Text(
-                "بله، ذخیره کن",
-                style: TextStyle(color: Colors.red),
-              ),
-            ),
-          ],
-        ),
-      );
-
-      if (forceSave != true) return;
+    if (_germanController.text.trim().isEmpty) {
+      _showError(l10n.errGermanText);
+      return;
     }
 
     if (!_enTranslations.any((c) => c.text.trim().isNotEmpty)) {
@@ -446,17 +442,7 @@ class _AddItemScreenState extends State<AddItemScreen> {
       return;
     }
 
-    if (_selectedType == ContentType.verb) {
-      if (_verbPastSimpleController.text.trim().isEmpty) {
-        _showError(l10n.errPrateritum);
-        return;
-      }
-      if (_verbPastPerfectController.text.trim().isEmpty) {
-        _showError(l10n.errPerfekt);
-        return;
-      }
-    }
-
+    final germanText = _germanController.text.trim();
     if (widget.itemToEdit == null ||
         (widget.itemToEdit != null &&
             widget.itemToEdit!.german != germanText)) {
@@ -538,7 +524,6 @@ class _AddItemScreenState extends State<AddItemScreen> {
     );
 
     final db = await DBHelper.instance.database;
-
     if (widget.itemToEdit == null) {
       final id = await DBHelper.instance.insertItem(item);
       await LeitnerService.instance.addToLeitner(id);
@@ -554,7 +539,6 @@ class _AddItemScreenState extends State<AddItemScreen> {
       if (!mounted) return;
       _showSuccess(l10n.msgUpdated);
     }
-
     if (!mounted) return;
     Navigator.pop(context);
   }
@@ -615,11 +599,8 @@ class _AddItemScreenState extends State<AddItemScreen> {
             child: ListView(
               padding: const EdgeInsets.fromLTRB(20, 16, 20, 80),
               children: [
-                // ویجت ساده بدون انیمیشن
                 _buildTypeSelector(context, l10n, fontFamily),
-
                 const SizedBox(height: 20),
-
                 _sectionCard(
                   context,
                   title: l10n.labelGermanText,
@@ -630,13 +611,12 @@ class _AddItemScreenState extends State<AddItemScreen> {
                     icon: HugeIcons.strokeRoundedTextFont,
                     fontFamily: 'Poppins',
                     l10n: l10n,
-                    // دکمه جادویی فقط اگر _isPremiumUser واقعی باشد نمایش داده می‌شود
                     suffixIcon: _isPremiumUser
                         ? IconButton(
                             onPressed: _isMagicLoading
                                 ? null
                                 : _handleMagicFill,
-                            tooltip: "Magic Fill with AI",
+                            tooltip: l10n.magicFillTooltip,
                             icon: _isMagicLoading
                                 ? const SizedBox(
                                     width: 20,
@@ -983,7 +963,6 @@ class _AddItemScreenState extends State<AddItemScreen> {
     );
   }
 
-  // ... (بقیه متدهای کمکی UI مثل _contentTypeLabel, _buildSpecificFieldsForType, ... بدون تغییر)
   String _contentTypeLabel(ContentType type, AppLocalizations l10n) {
     switch (type) {
       case ContentType.word:
